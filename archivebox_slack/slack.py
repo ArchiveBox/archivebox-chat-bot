@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from collections import deque
+from urllib.parse import urlsplit
 
 from slack_sdk.errors import SlackApiError
 from slack_sdk.http_retry.builtin_async_handlers import AsyncRateLimitErrorRetryHandler
@@ -298,11 +299,12 @@ class Slack:
                     raise TimeoutError("Slack is still processing the uploaded image; inspect this job before retrying")
                 await asyncio.sleep(1)
             files[kind] = file
-        title = slack_escape(snapshot.get("title") or snapshot["url"])[:160]
+        title = slack_escape(" ".join((snapshot.get("title") or snapshot["url"]).split()))[:100]
         original = slack_escape(snapshot["url"])
+        source = slack_escape(urlsplit(snapshot["url"]).hostname or snapshot["url"])
         size = size_label(snapshot.get("output_size", 0))
-        persona = slack_escape(snapshot.get("persona") or "Default")
-        line = f"✅ *<{detail_url}|{title}>* · <{original}> · {size} · 👤 {persona}"
+        persona = slack_escape(" ".join((snapshot.get("persona") or "Default").split()))
+        line = f"✅ *<{detail_url}|{title}>* · <{original}|{source}> · {size} · 👤 {persona}"
         if files.get("favicon"):
             line += f" · <{files['favicon']['permalink']}|🌐>"
         section = {"type": "section", "text": {"type": "mrkdwn", "text": line}}
