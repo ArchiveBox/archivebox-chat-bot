@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, chmodSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import {
   Chat,
@@ -66,6 +66,14 @@ const string = (
   if (required) throw new SafeError(`Missing required option: ${key}`);
 };
 const accounts = new Map<string, Account>();
+const stableJSON = (value: unknown): string =>
+  JSON.stringify(value, (_key, item) =>
+    item && typeof item === "object" && !Array.isArray(item)
+      ? Object.fromEntries(
+          Object.entries(item).sort(([a], [b]) => a.localeCompare(b)),
+        )
+      : item,
+  );
 
 // Leave command interpretation in the shared Python engine, retaining Telegram message IDs.
 class TelegramTransport extends TelegramAdapter {
@@ -423,12 +431,38 @@ async function handle(req: RequestMessage) {
   if (req.method === "configure") {
     if (!Array.isArray(p.accounts))
       throw new SafeError("accounts must be an array");
-    for (const account of accounts.values()) await account.close();
-    accounts.clear();
-    const result: Record<string, unknown> = {};
+    const desired = new Map<string, AccountConfig>();
+    const directories = new Set<string>();
     for (const config of p.accounts as AccountConfig[]) {
-      if (!config.id || accounts.has(config.id))
+      if (
+        !config ||
+        typeof config.id !== "string" ||
+        !config.id ||
+        desired.has(config.id)
+      )
         throw new SafeError("Account IDs must be unique");
+      if (typeof config.data_dir !== "string" || !isAbsolute(config.data_dir))
+        throw new SafeError("data_dir must be absolute");
+      const directory = resolve(config.data_dir);
+      if (directories.has(directory))
+        throw new SafeError("Each account requires a separate data_dir");
+      directories.add(directory);
+      desired.set(config.id, config);
+    }
+    for (const [id, account] of accounts) {
+      const config = desired.get(id);
+      if (!config || stableJSON(config) !== stableJSON(account.config)) {
+        await account.close();
+        accounts.delete(id);
+      }
+    }
+    const result: Record<string, unknown> = {};
+    for (const config of desired.values()) {
+      const existing = accounts.get(config.id);
+      if (existing) {
+        result[config.id] = existing.check();
+        continue;
+      }
       const account = new Account(config);
       accounts.set(config.id, account);
       try {

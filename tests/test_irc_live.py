@@ -106,10 +106,19 @@ async def test_real_sasl_identity_survives_nickname_change(tmp_path):
 
 async def test_real_irc_refuses_invalid_sasl(tmp_path):
     events = asyncio.Queue()
-    bot = IRCTransport({"server": "127.0.0.1", "port": int(os.environ.get("IRC_TEST_PORT", "16667")),
-                        "tls": False, "nickname": "bad" + uuid.uuid4().hex[:8],
-                        "sasl_username": "missing" + uuid.uuid4().hex[:8], "sasl_password": "invalid-password"},
-                       "invalid", tmp_path, events.put)
+    bot = IRCTransport(
+        {
+            "server": "127.0.0.1",
+            "port": int(os.environ.get("IRC_TEST_PORT", "16667")),
+            "tls": False,
+            "nickname": "bad" + uuid.uuid4().hex[:8],
+            "sasl_username": "missing" + uuid.uuid4().hex[:8],
+            "sasl_password": "invalid-password",
+        },
+        "invalid",
+        tmp_path,
+        events.put,
+    )
     try:
         with pytest.raises(RuntimeError, match="connection failed"):
             await bot.start()
@@ -117,3 +126,31 @@ async def test_real_irc_refuses_invalid_sasl(tmp_path):
         assert events.empty()
     finally:
         await bot.close()
+
+
+async def test_real_irc_without_message_tags_uses_unique_session_ids(tmp_path):
+    suffix = uuid.uuid4().hex[:8]
+    options = {"server": "127.0.0.1", "port": int(os.environ.get("IRC_TEST_PORT", "16667")), "tls": False}
+    received, peer_received = asyncio.Queue(), asyncio.Queue()
+    bot_options = {**options, "nickname": "legacy" + suffix}
+    bot = IRCTransport(bot_options, "bot", tmp_path, received.put)
+    peer = IRCTransport({**options, "nickname": "source" + suffix}, "peer", tmp_path, peer_received.put)
+    ids = []
+    try:
+        await peer.start()
+        for _ in range(2):
+            await bot.start()
+            await bot.client.rawmsg("CAP", "REQ", "-message-tags")
+            async with asyncio.timeout(10):
+                while bot.client._capabilities.get("message-tags"):
+                    await asyncio.sleep(0.01)
+            await peer.send(bot.client.nickname, "same text without upstream msgid")
+            event = await asyncio.wait_for(received.get(), 10)
+            assert event["id"].startswith(bot.session + ":")
+            ids.append(event["id"])
+            await bot.close()
+            bot = IRCTransport(bot_options, "bot", tmp_path, received.put)
+        assert ids[0] != ids[1]
+    finally:
+        await bot.close()
+        await peer.close()

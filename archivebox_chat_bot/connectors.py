@@ -20,6 +20,12 @@ log = logging.getLogger(__name__)
 NODE_PLATFORMS = {"telegram", "whatsapp", "messenger"}
 
 
+def uses_sdk(connection, role):
+    return connection.platform in NODE_PLATFORMS and not (
+        connection.platform == "whatsapp" and connection.account_options(role).get("transport") == "agent"
+    )
+
+
 class ConnectorWorker:
     def __init__(self):
         self.process = None
@@ -128,6 +134,10 @@ class TransportBot:
                 from .transports.irc import IRCTransport
 
                 adapter = IRCTransport
+            elif connection.platform == "whatsapp":
+                from .transports.whatsapp_agent import WhatsAppAgentTransport
+
+                adapter = WhatsAppAgentTransport
             else:
                 from .transports.imessage import IMessageTransport
 
@@ -264,9 +274,7 @@ class Adapters:
             elif connection.platform == "zulip":
                 bot = Zulip(connection, role, store=self.store)
             else:
-                bot = TransportBot(
-                    connection, role, self.store, self.worker if connection.platform in NODE_PLATFORMS else None
-                )
+                bot = TransportBot(connection, role, self.store, self.worker if uses_sdk(connection, role) else None)
             self.bots[key] = bot
         return self.bots[key]
 
@@ -278,7 +286,7 @@ class Adapters:
             for role in ("capture", "ai"):
                 if not getattr(connection, role).enabled:
                     continue
-                if connection.platform in NODE_PLATFORMS:
+                if uses_sdk(connection, role):
                     self.create(connection, role, settings)
                     accounts.append(
                         {
@@ -288,8 +296,9 @@ class Adapters:
                             "data_dir": str(self.store.directory.resolve() / "accounts" / f"{connection.id}:{role}"),
                         }
                     )
-        if accounts:
+        if accounts and not self.worker.process:
             await self.worker.start()
+        if self.worker.process:
             await self.worker.call("configure", params={"accounts": accounts})
 
     async def close(self):

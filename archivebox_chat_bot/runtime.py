@@ -74,5 +74,23 @@ class Runtime:
 
     async def restart(self):
         async with self.lock:
-            await self.close()
-            await self.start()
+            settings = self.store.settings()
+            if settings.model_dump(exclude={"connections"}) != self.settings.model_dump(exclude={"connections"}):
+                await self.close()
+                await self.start()
+                return
+            previous = {c.id: c for c in self.settings.connections}
+            desired = {c.id: c for c in settings.connections if c.enabled}
+            changed = {key for key in previous.keys() | desired.keys() if previous.get(key) != desired.get(key)}
+            for key in changed:
+                old = self.engines.pop(key, None)
+                if old:
+                    await old.close()
+                for role in ("capture", "ai"):
+                    self.adapters.bots.pop(f"{key}:{role}", None)
+            await self.adapters.configure(settings)
+            self.settings = settings
+            for key in changed & desired.keys():
+                active = Engine(self.store, settings, desired[key], self.adapters)
+                self.engines[key] = active
+                await active.start()

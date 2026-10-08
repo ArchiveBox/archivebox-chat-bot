@@ -60,6 +60,17 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 
 > **Development in progress:** Slack and Zulip have real capture screenshots above. New-provider acceptance and screenshots are being added as their live workflows pass. iMessage needs a Mac; personal Messenger groups need a Matrix bridge.
 
+### Provider setup
+
+<table>
+<tr><th width="33%">Telegram · create your bots</th><th width="33%">Telegram · add them to a group</th><th width="33%">iMessage · connect Messages</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/telegram-setup.jpg"><img src="screenshots/telegram-setup.jpg" width="100%" alt="Actual BotFather setup: ArchiveBox Bot and ArchiveBox AI Bot names and group privacy settings"></a></td>
+<td width="33%" valign="top"><a href="screenshots/telegram-group-config.jpg"><img src="screenshots/telegram-group-config.jpg" width="100%" alt="Actual private Telegram test group with both ArchiveBox bots installed"></a></td>
+<td width="33%" valign="top"><a href="screenshots/imessage-setup.png"><img src="screenshots/imessage-setup.png" width="100%" alt="Actual macOS permission allowing the local host to send through Messages"></a></td>
+</tr>
+</table>
+
 ### Groups & commands
 
 - Invite **ArchiveBox Bot** into a group and send a message to discover it in the console.
