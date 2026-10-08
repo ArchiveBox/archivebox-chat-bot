@@ -139,6 +139,17 @@ docker compose up -d
 </tr>
 </table>
 
+<p><strong>Live Cabbage check (2026-10-08):</strong> A channel mention and an AI DM were handled, but both Ars Technica URLs resolve to snapshots whose captured response is <code>403 Forbidden</code>; replay shows that error instead of article content. A separate capture-bot DM submission is still waiting on Discord hCaptcha and is not counted as a completed DM capture.</p>
+
+<table>
+<tr><th width="33%">Capture-bot channel mention</th><th width="33%">Saved URL cards</th><th width="33%">AI DM reply</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/discord-new-urls-cabbage.jpg"><img src="screenshots/discord-new-urls-cabbage.jpg" width="100%" alt="Live Discord channel mention with Ars Technica link previews and bot reaction"></a></td>
+<td width="33%" valign="top"><a href="screenshots/discord-saved-urls-cabbage.jpg"><img src="screenshots/discord-saved-urls-cabbage.jpg" width="100%" alt="Live Discord saved-url cards clearly labeled 403 Forbidden for the Ars Technica captures"></a></td>
+<td width="33%" valign="top"><a href="screenshots/discord-ai-dm-response-cabbage.jpg"><img src="screenshots/discord-ai-dm-response-cabbage.jpg" width="100%" alt="Live Discord AI DM reply reusing the existing 403 Forbidden snapshot"></a></td>
+</tr>
+</table>
+
 ---
 
 <img src="https://static.zulipchat.com/static/images/favicon.svg" align="right" width="80" style="float: right; width: 80px;" alt="Zulip logo">
@@ -154,6 +165,17 @@ docker compose up -d
 <td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/zulip-bot-email.jpg"><img src="archivebox_chat_bot/static/guides/zulip-bot-email.jpg" width="100%" alt="Our Zulip Generic bots with real bot email addresses in the Email column"></a></td>
 <td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/zulip-bot-credentials.jpg"><img src="archivebox_chat_bot/static/guides/zulip-bot-credentials.jpg" width="100%" alt="Our Generic Zulip bot with API key and configuration-download controls; secret stays hidden"></a></td>
 <td width="33%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip snapshot card with uploaded screenshot and favicon"></a></td>
+</tr>
+</table>
+
+<p><strong>Live Cabbage check (2026-10-08):</strong> The stream mention and AI DM flows were handled, but both Ars Technica URLs already had snapshots showing <code>403 Forbidden</code>. The AI reply reported that <code>ONLY_NEW</code> skipped a retry, so these results do not show captured article content.</p>
+
+<table>
+<tr><th width="33%">Capture-bot stream mention</th><th width="33%">Saved URL results</th><th width="33%">AI DM reply</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/zulip-mention-cabbage.jpg"><img src="screenshots/zulip-mention-cabbage.jpg" width="100%" alt="Live Zulip stream mention of ArchiveBox Bot with an Ars Technica URL and bot reaction"></a></td>
+<td width="33%" valign="top"><a href="screenshots/zulip-saved-urls-cabbage.jpg"><img src="screenshots/zulip-saved-urls-cabbage.jpg" width="100%" alt="Live Zulip saved-url results showing 403 Forbidden for the Ars Technica snapshots"></a></td>
+<td width="33%" valign="top"><a href="screenshots/zulip-ai-dm-response-cabbage.jpg"><img src="screenshots/zulip-ai-dm-response-cabbage.jpg" width="100%" alt="Live Zulip AI DM reply explaining reuse of the existing 403 Forbidden snapshots"></a></td>
 </tr>
 </table>
 
