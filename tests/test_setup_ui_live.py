@@ -52,7 +52,18 @@ def test_provider_guides_load_real_images_and_change_with_transport():
         page.get_by_role("button", name="Open Chatbot Admin Console").click()
         expect(page.locator("#console")).to_be_visible()
         page.locator('.nav[data-tab="connections"]').click()
-        for provider in ("Slack", "Discord", "Zulip", "Telegram", "WhatsApp", "IRC", "iMessage", "Messenger", "Beeper"):
+        for provider in (
+            "Slack",
+            "Discord",
+            "Email",
+            "Zulip",
+            "Telegram",
+            "WhatsApp",
+            "IRC",
+            "iMessage",
+            "Messenger",
+            "Beeper",
+        ):
             page.locator(".provider-card").filter(has=page.get_by_text(provider, exact=True)).click()
             guide = page.locator("#setup-guide")
             expect(guide).to_have_attribute("open", "")
@@ -64,6 +75,18 @@ def test_provider_guides_load_real_images_and_change_with_transport():
                 image.scroll_into_view_if_needed()
                 image.evaluate("image => image.decode()")
                 assert image.evaluate("image => image.naturalWidth > 0"), provider
+            if provider == "Email":
+                page.locator('#editor input[name="username"]').fill("archive@gmail.com")
+                page.locator('#editor input[name="username"]').press("Tab")
+                expect(page.locator('#editor input[name="host"]')).to_have_value("imap.gmail.com")
+                page.get_by_text("Advanced inbox settings", exact=True).click()
+                expect(page.locator('#editor input[name="port"]')).to_have_value("993")
+                expect(page.locator('#editor input[name="poll_seconds"]')).to_have_value("30")
+                expect(page.locator('#editor input[name="max_message_mb"]')).to_have_value("25")
+                expect(page.locator('#editor input[name="include_existing"]')).not_to_be_checked()
+                page.locator('#editor select[name="tls_mode"]').select_option("starttls")
+                expect(page.locator('#editor input[name="port"]')).to_have_value("143")
+                expect(page.locator('#editor input[name="bot_token"]')).to_have_count(0)
             if provider == "WhatsApp":
                 expect(guide).to_contain_text("Chat info → API key")
                 assert guide.locator('a[href*="faq.whatsapp.com"]').count()

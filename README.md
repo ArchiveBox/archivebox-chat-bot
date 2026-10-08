@@ -17,7 +17,7 @@
 ## 🏛️ `@ArchiveBox` Bot
 
 - **mention @ArchiveBox in any thread** → saves all URLs found in the last 10 messages
-- **DM @ArchiveBox bot with any text** → archives every URL in your DM, AI bot can also handle complex tasks
+- **DM @ArchiveBox bot with any text** → archives every URL in your DM
 - **Add @ArchiveBox to group chats** → optionally archive all URLs shared in groups it's added to
 - **Auto-tags URLs with source info** → `slack,bob,reading-list` (connector, user, channel name)
 
@@ -290,6 +290,16 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 - **Tags:** `email,Nick Sweeting` · **Results:** ArchiveBox + **Activity**.
 - **Inbox:** checked every 30 seconds; new mail only by default. Optional first-connection import of existing mail.
 - **Inbound only:** no SMTP or replies; preserves read/unread flags. PDF, Office, and image attachments are not inspected or uploaded.
+
+<table>
+<tr><th width="50%">1 · Connect your inbox</th><th width="50%">2 · Check Activity</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/email-settings.jpg"><img src="archivebox_chat_bot/static/guides/email-settings.jpg" width="100%" alt="Connected real IMAP test inbox with TLS, folder, polling, and sender settings"></a></td>
+<td width="50%" valign="top"><a href="screenshots/email-activity.jpg"><img src="screenshots/email-activity.jpg" width="100%" alt="Completed email capture containing links from the body, quoted reply, and attached email"></a></td>
+</tr>
+</table>
+
+<a href="screenshots/email-saved.jpg"><img src="screenshots/email-saved.jpg" width="100%" alt="Three sealed snapshots from one real email, tagged email and Nick Sweeting"></a>
 
 [Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
 
