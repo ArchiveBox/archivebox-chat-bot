@@ -88,13 +88,37 @@ def test_admin_login_csrf_redaction_and_persisted_settings(console):
 
 def test_preferences_and_untrusted_event_security(console):
     login(console)
-    assert console.put("/api/settings", json={"enable_ai": True}).status_code == 422
+    assert (
+        console.put("/api/settings", json={"connections": [{"id": "bad", "platform": "unsupported"}]}).status_code
+        == 422
+    )
     assert console.put("/api/settings", json={"archivebox_url": "file:///etc/passwd"}).status_code == 422
+    assert (
+        console.put(
+            "/api/settings", json={"connections": [{"id": "default", "platform": "slack", "enabled": False}]}
+        ).status_code
+        == 200
+    )
     assert (
         console.post("/slack/capture/events", json={"type": "url_verification", "challenge": "untrusted"}).status_code
         == 503
     )
-    assert console.put("/api/settings", json={"slack_signing_secret": "local-signature-test"}).status_code == 200
+    assert (
+        console.put(
+            "/api/settings",
+            json={
+                "connections": [
+                    {
+                        "id": "default",
+                        "platform": "slack",
+                        "enabled": False,
+                        "capture": {"options": {"signing_secret": "local-signature-test"}},
+                    }
+                ]
+            },
+        ).status_code
+        == 200
+    )
     assert (
         console.post("/slack/capture/events", json={"type": "url_verification", "challenge": "untrusted"}).status_code
         == 401
@@ -105,10 +129,16 @@ def test_preferences_and_untrusted_event_security(console):
 
 def test_missing_zulip_settings_are_actionable_and_password_can_rotate(console):
     login(console)
-    assert console.put("/api/settings", json={"platform": "zulip"}).status_code == 200
+    assert (
+        console.put("/api/settings", json={"connections": [{"id": "default", "platform": "zulip"}]}).status_code == 200
+    )
     response = console.post("/api/check/chat")
     assert response.status_code == 400
-    assert "Zulip server URL" in response.json()["detail"]
+    assert "connect this bot" in response.json()["detail"]
+    assert (
+        "Zulip server URL"
+        in console.get("/api/state").json()["connections"]["chat"]["default"]["roles"]["capture"]["error"]
+    )
     assert (
         console.post(
             "/api/password", json={"current_password": "wrong", "new_password": "new-test-password-123"}

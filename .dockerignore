@@ -7,3 +7,6 @@ screenshots
 .pytest_cache
 .ruff_cache
 **/__pycache__
+
+connectors/node_modules
+connectors/dist

@@ -12,6 +12,6 @@ jobs:
           python-version: '3.13'
       - run: uv sync --frozen
       - run: uv run ruff check . && uv run ruff format --check .
-      - run: uv run pytest -xq tests/local
+      - run: uv run python -m pytest -xq tests/local
       - run: docker compose config --quiet
-      - run: docker build -t archivebox-slack:test .
+      - run: docker build -t archivebox-chat-bot:test .

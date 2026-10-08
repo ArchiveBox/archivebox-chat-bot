@@ -8,7 +8,6 @@ from .archivebox import ArchiveBox
 from .connectors import Adapters
 from .engine import Engine, safe_error
 
-
 log = logging.getLogger(__name__)
 
 
@@ -50,7 +49,7 @@ class Runtime:
     def status(self):
         connections = {}
         for key, engine in self.engines.items():
-            statuses = {}
+            statuses = {role: dict(status) for role, status in engine.connections.items()}
             for role, bot in engine.bots.items():
                 status = dict(engine.connections.get(role, {}))
                 status.update(self.adapters.worker.status.get(f"{key}:{role}", {}))
