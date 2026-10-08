@@ -354,11 +354,13 @@ docker compose up -d
 - **Inbox:** checked every 30 seconds; new mail only by default. Optional first-connection import of existing mail.
 - **Inbound only:** no SMTP or replies; preserves read/unread flags. PDF, Office, and image attachments are not inspected or uploaded.
 
-<p><strong>Live Gmail → AgentMail check (2026-10-08):</strong> A real Gmail message with two Ars Technica article URLs was sent through Gmail and read from the AgentMail inbox by Cabbage. The IMAP cursor advanced to UID 4 and the capture job queued both URLs in ArchiveBox; the crawl is still waiting for the ArchiveBox runner, so this is ingestion evidence rather than completed snapshots.</p>
+<p><strong>Live Gmail → AgentMail check (2026-10-08):</strong> Two real Gmail messages with two Ars Technica URLs each were read from AgentMail over IMAP, parsed, and saved by Cabbage. The UID 3 and UID 4 jobs completed with four sealed ArchiveBox snapshots and non-empty saved outputs, including WACZ, screenshot, and hash-manifest files. Ars Technica returned <code>403 Forbidden</code> for these requests, so the captures do not contain the article bodies.</p>
 
 <img src="screenshots/email-agentmail-connected-cabbage.jpg" width="100%" alt="Cabbage Chatbot Admin Console showing the connected AgentMail IMAP inbox with the password retained securely">
 
 <img src="screenshots/email-agentmail-accepted-cabbage.jpg" width="100%" alt="Gmail showing Message sent after sending two Ars Technica links to the Cabbage AgentMail inbox">
+
+<img src="screenshots/email-agentmail-saved-cabbage.jpg" width="100%" alt="Cabbage console showing the connected AgentMail inbox and four URLs saved">
 
 [Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
 
