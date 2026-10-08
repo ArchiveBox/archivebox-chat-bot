@@ -194,10 +194,7 @@ class Runtime:
                 key
                 for key, state in self.status().get("chat", {}).items()
                 if key in desired
-                and (
-                    state.get("error")
-                    or any(not role.get("ok", False) for role in state.get("roles", {}).values())
-                )
+                and (state.get("error") or any(not role.get("ok", False) for role in state.get("roles", {}).values()))
             }
             changed.update(unhealthy)
             for key in changed:

@@ -155,8 +155,8 @@ class WhatsAppAgentTransport:
         if not self.task and self.first_page is None:
             try:
                 self.first_page = await self._poll(0)
-            except TransientReadError:
-                self.recovering = "WhatsApp agent read temporarily failed; retrying automatically"
+            except TransientReadError as exc:
+                self.recovering = f"{exc}; retrying automatically"
                 return self._recovering_status()
             if self.first_page:
                 self._identity(self.first_page)
@@ -232,8 +232,8 @@ class WhatsAppAgentTransport:
             while True:
                 try:
                     page = await self._poll(25)
-                except TransientReadError:
-                    self.recovering = "WhatsApp agent read temporarily failed; retrying automatically"
+                except TransientReadError as exc:
+                    self.recovering = f"{exc}; retrying automatically"
                     await asyncio.sleep(retry_delay)
                     retry_delay = min(retry_delay * 2, 60)
                     continue

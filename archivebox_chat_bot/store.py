@@ -340,9 +340,7 @@ class Store:
             )
 
     def admin_session(self, token_hash, current_time):
-        row = self.db.execute(
-            "SELECT csrf,expires FROM admin_sessions WHERE token_hash=?", (token_hash,)
-        ).fetchone()
+        row = self.db.execute("SELECT csrf,expires FROM admin_sessions WHERE token_hash=?", (token_hash,)).fetchone()
         if row and row[1] < current_time:
             self.delete_admin_session(token_hash)
             return None

@@ -63,9 +63,11 @@ def sign_in(client, password):
 
 def test_sessions_survive_process_restart_and_revoke_on_logout_or_password_change(tmp_path):
     password = "test-persistent-session-password"
-    with chatbot_server(tmp_path) as base_url, httpx.Client(base_url=base_url) as first, httpx.Client(
-        base_url=base_url
-    ) as second:
+    with (
+        chatbot_server(tmp_path) as base_url,
+        httpx.Client(base_url=base_url) as first,
+        httpx.Client(base_url=base_url) as second,
+    ):
         csrf, token = setup_password(first, password)
         assert first.get("/api/state").status_code == 200
         other_csrf, other_token = sign_in(second, password)
@@ -86,10 +88,13 @@ def test_sessions_survive_process_restart_and_revoke_on_logout_or_password_chang
 
         with httpx.Client(base_url=base_url, cookies={"abx_chat_session": other_token}) as second:
             second.headers["x-csrf-token"] = other_csrf
-            assert second.post(
-                "/api/password",
-                json={"current_password": password, "new_password": "rotated-persistent-password"},
-            ).status_code == 200
+            assert (
+                second.post(
+                    "/api/password",
+                    json={"current_password": password, "new_password": "rotated-persistent-password"},
+                ).status_code
+                == 200
+            )
 
         with httpx.Client(base_url=base_url, cookies={"abx_chat_session": token}) as first:
             assert first.get("/api/state").status_code == 401
@@ -109,9 +114,10 @@ def test_expired_session_is_rejected_after_process_restart(tmp_path):
     with sqlite3.connect(tmp_path / "bridge.sqlite3") as db:
         db.execute("UPDATE admin_sessions SET expires=? WHERE token_hash=?", (time.time() - 1, token_hash))
 
-    with chatbot_server(tmp_path) as base_url, httpx.Client(
-        base_url=base_url, cookies={"abx_chat_session": token}
-    ) as client:
+    with (
+        chatbot_server(tmp_path) as base_url,
+        httpx.Client(base_url=base_url, cookies={"abx_chat_session": token}) as client,
+    ):
         assert client.get("/api/state").status_code == 401
         with sqlite3.connect(tmp_path / "bridge.sqlite3") as db:
             assert db.execute("SELECT 1 FROM admin_sessions WHERE token_hash=?", (token_hash,)).fetchone() is None

@@ -97,8 +97,8 @@ class BeeperTransport:
             return self.check_result or self._recovering_status()
         try:
             result = await self._check_remote()
-        except TransientReadError:
-            self.recovering = "Beeper read temporarily failed; retrying automatically"
+        except TransientReadError as exc:
+            self.recovering = f"{exc}; retrying automatically"
             if self.task:
                 raise
             return self._recovering_status()
@@ -271,8 +271,8 @@ class BeeperTransport:
         if not self.recovering:
             try:
                 await self._reconcile()
-            except TransientReadError:
-                self.recovering = "Beeper read temporarily failed; retrying automatically"
+            except TransientReadError as exc:
+                self.recovering = f"{exc}; retrying automatically"
         self.task = asyncio.create_task(self._run())
 
     async def _reconcile(self):
@@ -357,8 +357,8 @@ class BeeperTransport:
                     if self.recovering and not self.check_result:
                         await self._check_remote()
                     await self._reconcile()
-                except TransientReadError:
-                    self.recovering = "Beeper read temporarily failed; retrying automatically"
+                except TransientReadError as exc:
+                    self.recovering = f"{exc}; retrying automatically"
                     await asyncio.sleep(retry_delay)
                     retry_delay = min(retry_delay * 2, 60)
                     continue
