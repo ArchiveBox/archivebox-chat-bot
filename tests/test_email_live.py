@@ -201,11 +201,14 @@ async def test_real_inbound_mime_cursor_and_flags(imap_server, tmp_path, tls_mod
         await bot.start(engine.receive)
         await bot.transport.poll()
         assert store.db.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 0
-        mail = message("https://example.org/plain\n> Quoted earlier: https://example.org/quoted")
+        mail = message(
+            "https://example.org/plain\n> Quoted earlier: https://example.org/quoted",
+            subject="References https://example.org/subject",
+        )
         mail.add_alternative(
             '<p>https://example.org/plain</p><a href="https://example.org/html?a=1&amp;b=2">HTML</a>', subtype="html"
         )
-        nested = message("Forwarded https://example.org/nested")
+        nested = message("Forwarded https://example.org/nested", subject="Re: https://example.org/nested-subject")
         mail.add_attachment(nested)
         mail.add_attachment("Attachment https://example.org/attachment", subtype="plain", filename="links.txt")
         mail.add_attachment(
@@ -228,9 +231,11 @@ async def test_real_inbound_mime_cursor_and_flags(imap_server, tmp_path, tls_mod
         event = await next_job(store, 1)
         assert set(extract_urls(event["text"])) == {
             "https://example.org/plain",
+            "https://example.org/subject",
             "https://example.org/quoted",
             "https://example.org/html?a=1&b=2",
             "https://example.org/nested",
+            "https://example.org/nested-subject",
             "https://example.org/attachment",
             "https://example.org/html-attachment?a=1&b=2",
             "https://example.org/eml-attachment",

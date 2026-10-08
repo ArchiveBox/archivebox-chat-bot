@@ -47,7 +47,7 @@ def email_message(raw, folder):
     display, sender = parseaddr(str(message.get("From", "")))
     if not sender or "@" not in sender:
         sender, display = "unknown", "Unknown sender"
-    texts = [str(message.get("Subject", ""))]
+    texts = []
     parts = [message]
     count = 0
     while parts:
@@ -55,6 +55,8 @@ def email_message(raw, folder):
         count += 1
         if count > 1000:
             raise ValueError("Email has too many MIME parts")
+        if part.get("Subject"):
+            texts.append(str(part["Subject"]))
         if part.is_multipart():
             parts.extend(reversed(part.get_payload()))
             continue
