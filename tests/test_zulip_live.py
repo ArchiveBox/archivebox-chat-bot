@@ -20,12 +20,12 @@ import httpx
 import pytest
 from PIL import Image
 
-from archivebox_slack.archivebox import ArchiveBox
-from archivebox_slack.config import Settings
-from archivebox_slack.engine import Engine
-from archivebox_slack.store import Store
-from archivebox_slack.text import size_label
-from archivebox_slack.zulip import Zulip
+from archivebox_chat_bot.archivebox import ArchiveBox
+from archivebox_chat_bot.config import Settings
+from archivebox_chat_bot.engine import Engine
+from archivebox_chat_bot.store import Store
+from archivebox_chat_bot.text import size_label
+from archivebox_chat_bot.zulip import Zulip
 
 
 class PrivateCredentials(dict):

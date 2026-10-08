@@ -11,25 +11,24 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from slack_sdk.signature import SignatureVerifier
 
 from .archivebox import ArchiveBox
-from .config import SECRET_FIELDS, Settings
-from .engine import Engine, safe_error
+from .config import Settings, merge_settings
+from .engine import safe_error
 from .manifest import manifest
-from .slack import Slack
+from .runtime import Runtime
 from .store import Store
-from .zulip import Zulip
 
 STATIC = Path(__file__).parent / "static"
 
 
 def create_app(directory=None):
     store = Store(directory or os.environ.get("DATA_DIR", "data"))
-    engine = Engine(store)
+    engine = Runtime(store)
     password = os.environ.get("ADMIN_PASSWORD", "")
     if not store.meta("password_hash"):
         if not password:
@@ -52,7 +51,7 @@ def create_app(directory=None):
         await engine.close()
         store.close()
 
-    app = FastAPI(title="ArchiveBox Slack", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = FastAPI(title="ArchiveBox Chat Bot", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.store, app.state.engine = store, engine
 
     @app.middleware("http")
@@ -137,12 +136,6 @@ def create_app(directory=None):
 
     @app.get("/api/state")
     async def state(session=admin_session):
-        for role, bot in engine.bots.items():
-            task = getattr(bot, "task", None)
-            if task and task.done() and not task.cancelled():
-                error = task.exception()
-                if error:
-                    engine.connections[role] = {"ok": False, "error": safe_error(error)}
         jobs = []
         for job in store.jobs(limit=40):
             payload, result = job["payload"], job["result"]
@@ -151,8 +144,7 @@ def create_app(directory=None):
                     "id": job["id"],
                     "kind": job["kind"],
                     "state": job["state"]
-                    if job["scope"] in (engine.scope(), engine.scope("ai"))
-                    or job["state"] in ("done", "ignored", "cancelled")
+                    if job["scope"] in engine.scopes or job["state"] in ("done", "ignored", "cancelled")
                     else "held",
                     "error": job["error"],
                     "created_at": job["created_at"],
@@ -166,7 +158,8 @@ def create_app(directory=None):
             "settings": store.public_settings(),
             "csrf": session["csrf"],
             "stats": store.stats(),
-            "connections": engine.connections,
+            "connections": engine.status(),
+            "groups": {c.id: store.groups(c.id) for c in store.settings().connections},
             "error": engine.error,
             "jobs": jobs,
         }
@@ -174,57 +167,120 @@ def create_app(directory=None):
     @app.put("/api/settings")
     async def save_settings(request: Request, session=admin_session):
         data = await request.json()
-        clear = data.pop("clear_secrets", [])
-        current = store.settings().model_dump()
-        for key in SECRET_FIELDS:
-            if key in clear:
-                current[key] = ""
-            elif not data.get(key):
-                data.pop(key, None)
         try:
-            settings = Settings.model_validate({**current, **data})
+            settings = Settings.model_validate(merge_settings(store.settings().model_dump(), data))
         except ValidationError as exc:
             raise HTTPException(
                 422, [{"field": ".".join(map(str, e["loc"])), "message": e["msg"]} for e in exc.errors()]
             ) from exc
-        if settings.enable_ai and not settings.ai_allowed_users:
-            raise HTTPException(422, "Add at least one allowed AI user ID before enabling the AI bot")
+        if any(c.ai.enabled and not c.ai_allowed_users for c in settings.connections):
+            raise HTTPException(422, "Select at least one trusted person before enabling ArchiveBox AI Bot")
         store.save_settings(settings)
         await engine.restart()
         return {"ok": True, "settings": store.public_settings()}
 
+    def connection(connection_id):
+        value = next((c for c in store.settings().connections if c.id == connection_id), None)
+        if value is None:
+            raise HTTPException(404, "Connection not found")
+        return value
+
+    def bot_for(connection_id, role="capture"):
+        active = engine.engines.get(connection_id)
+        bot = active.bots.get(role) if active else None
+        if bot is None:
+            raise HTTPException(400, "Save and connect this bot first")
+        return bot
+
     @app.post("/api/check/{service}")
-    async def check(service: str, session=admin_session):
-        settings = store.settings()
+    async def check(service: str, connection_id: str = "default", role: str = "capture", session=admin_session):
         client = None
         try:
-            if service not in ("archivebox", "chat"):
+            if service == "archivebox":
+                client = ArchiveBox(store.settings())
+                result = await asyncio.wait_for(client.check(), timeout=8)
+                engine.connections["archivebox"] = result
+            elif service == "chat":
+                result = await asyncio.wait_for(bot_for(connection_id, role).check(), timeout=15)
+            else:
                 raise ValueError("Unknown service")
-            client = (
-                ArchiveBox(settings)
-                if service == "archivebox"
-                else (Slack(settings) if settings.platform == "slack" else Zulip(settings))
-            )
-            return {"ok": True, **await asyncio.wait_for(client.check(), timeout=8)}
+            return {"ok": True, **result}
         except Exception as exc:
             raise HTTPException(400, safe_error(exc)) from exc
         finally:
             if client:
                 await client.close()
 
-    @app.post("/api/channels")
-    async def channels(session=admin_session):
-        bot = engine.bots.get("capture")
-        if not bot:
-            raise HTTPException(400, "Connect your chat bot first")
+    def update_connection(value):
+        settings = store.settings()
+        settings.connections = [value if c.id == value.id else c for c in settings.connections]
+        store.save_settings(settings)
+
+    @app.post("/api/connections/{connection_id}/channels")
+    async def channels(connection_id: str, session=admin_session):
+        bot = bot_for(connection_id)
         try:
-            channels = await bot.setup_channels()
-            settings = store.settings().model_copy(update=channels)
-            store.save_settings(settings)
-            await engine.restart()
-            return {"ok": True, **channels}
+            if hasattr(bot, "setup_channels"):
+                updates = await bot.setup_channels()
+                update_connection(connection(connection_id).model_copy(update=updates))
+                await engine.restart()
+                return {"ok": True, **updates}
+            return {"ok": True, "channels": await bot.channels()}
         except Exception as exc:
             raise HTTPException(400, safe_error(exc)) from exc
+
+    @app.get("/api/connections/{connection_id}/people")
+    async def people(connection_id: str, session=admin_session):
+        connection(connection_id)
+        rows = store.db.execute(
+            "SELECT user_id AS id, MAX(user_name) AS name FROM history WHERE connection=? AND is_bot=0 GROUP BY user_id ORDER BY name",
+            (connection_id,),
+        ).fetchall()
+        return {"people": [dict(row) for row in rows]}
+
+    @app.put("/api/connections/{connection_id}/groups")
+    async def group_settings(connection_id: str, request: Request, session=admin_session):
+        connection(connection_id)
+        data = await request.json()
+        channel = str(data.get("channel", ""))
+        if not channel or not isinstance(data.get("auto_archive"), bool):
+            raise HTTPException(422, "Choose a group and its archiving preference")
+        store.set_group(connection_id, channel, auto_archive=data["auto_archive"])
+        return {"ok": True}
+
+    @app.get("/api/connections/{connection_id}/{role}/pairing.png")
+    async def pairing(connection_id: str, role: str, session=admin_session):
+        import io
+
+        import qrcode
+
+        connection(connection_id)
+        qr = engine.adapters.worker.status.get(f"{connection_id}:{role}", {}).get("qr")
+        if not qr:
+            raise HTTPException(404, "No pairing code available")
+        output = io.BytesIO()
+        qrcode.make(qr).save(output, format="PNG")
+        return Response(output.getvalue(), media_type="image/png")
+
+    @app.api_route("/connections/{connection_id}/{role}/webhook", methods=["GET", "POST"])
+    async def webhook(connection_id: str, role: str, request: Request):
+        value = connection(connection_id)
+        if value.platform not in {"telegram", "messenger"} or role not in {"capture", "ai"}:
+            raise HTTPException(404)
+        body = await request.body()
+        if len(body) > 1024 * 1024:
+            raise HTTPException(413)
+        result = await engine.adapters.worker.call(
+            "webhook",
+            f"{connection_id}:{role}",
+            {
+                "url": str(request.url),
+                "method": request.method,
+                "headers": dict(request.headers),
+                "body": body.decode(),
+            },
+        )
+        return Response(result["body"], status_code=result["status"], headers=result["headers"])
 
     @app.post("/api/jobs/retry")
     async def retry(request: Request, session=admin_session):
@@ -234,17 +290,23 @@ def create_app(directory=None):
             raise HTTPException(400, "Only failed or uncertain jobs can be retried")
         if data.get("confirmed_remote_absent") is not True:
             raise HTTPException(400, "First confirm the remote crawl, session, or message was not created")
-        if job["scope"] not in (engine.scope(), engine.scope("ai")):
+        if job["scope"] not in engine.scopes:
             raise HTTPException(409, "Restore this job's original server, workspace and channel before retrying")
         store.update(job["id"], "queued")
         return {"ok": True}
 
     @app.get("/api/manifest/{role}")
-    async def app_manifest(role: str, transport: str = "socket", create: bool = False, session=admin_session):
+    async def app_manifest(
+        role: str,
+        transport: str = "socket",
+        create: bool = False,
+        connection_id: str = "default",
+        session=admin_session,
+    ):
         if role not in ("capture", "ai") or transport not in ("socket", "http"):
             raise HTTPException(400, "Invalid app or transport")
         settings = store.settings()
-        definition = manifest(role, transport, settings.public_url)
+        definition = manifest(role, transport, settings.public_url, connection_id)
         if create:
             return RedirectResponse(
                 "https://api.slack.com/apps?" + urlencode({"new_app": 1, "manifest_json": json.dumps(definition)}),
@@ -255,13 +317,16 @@ def create_app(directory=None):
             headers={"Content-Disposition": f'attachment; filename="archivebox-{role}.json"'},
         )
 
-    def slack_setting(role, field):
+    def slack_setting(connection_id, role, field):
         if role not in ("capture", "ai"):
             raise HTTPException(404)
-        return getattr(store.settings(), f"slack_{'ai_' if role == 'ai' else ''}{field}")
+        value = connection(connection_id)
+        if value.platform != "slack":
+            raise HTTPException(404)
+        return value.account_options(role).get(field, "")
 
-    async def verify_slack(request, role):
-        secret = slack_setting(role, "signing_secret")
+    async def verify_slack(request, connection_id, role):
+        secret = slack_setting(connection_id, role, "signing_secret")
         if not secret:
             raise HTTPException(503, "Configure the app signing secret first")
         body = await request.body()
@@ -272,56 +337,75 @@ def create_app(directory=None):
         return body
 
     @app.post("/slack/{role}/events")
-    async def slack_events(role: str, request: Request):
-        body = await verify_slack(request, role)
+    @app.post("/connections/{connection_id}/slack/{role}/events")
+    async def slack_events(role: str, request: Request, connection_id: str = "default"):
+        body = await verify_slack(request, connection_id, role)
         payload = json.loads(body)
         if payload.get("type") == "url_verification":
             return {"challenge": payload["challenge"]}
-        bot = engine.bots.get(role)
+        bot = bot_for(connection_id, role)
         if not bot or not bot.identity:
             raise HTTPException(503, "Bot is not connected")
         await bot.receive(payload)
         return {"ok": True}
 
     @app.post("/slack/{role}/commands")
-    async def slack_commands(role: str, request: Request):
+    @app.post("/connections/{connection_id}/slack/{role}/commands")
+    async def slack_commands(role: str, request: Request, connection_id: str = "default"):
         from urllib.parse import parse_qs
 
-        body = await verify_slack(request, role)
+        body = await verify_slack(request, connection_id, role)
         payload = {key: values[0] for key, values in parse_qs(body.decode()).items()}
-        bot = engine.bots.get(role)
+        bot = bot_for(connection_id, role)
         if not bot:
             raise HTTPException(503)
         command = payload.get("text", "").split(maxsplit=1)[0] if payload.get("text", "").strip() else "help"
-        if command not in store.settings().commands:
+        if command not in connection(connection_id).commands:
             return {"response_type": "ephemeral", "text": "That command is disabled."}
         await bot.receive_command(payload)
         return {"response_type": "ephemeral", "text": "Working on it — results will appear here."}
 
     @app.get("/slack/{role}/install")
-    async def install(role: str, session=admin_session):
+    @app.get("/connections/{connection_id}/slack/{role}/install")
+    async def install(role: str, connection_id: str = "default", session=admin_session):
         settings = store.settings()
-        client_id = slack_setting(role, "client_id")
+        client_id = slack_setting(connection_id, role, "client_id")
         if not client_id or not settings.public_url.startswith("https://"):
             raise HTTPException(400, "Configure an HTTPS public URL and Slack OAuth client ID")
         state = secrets.token_urlsafe(32)
         store.set_meta(
-            f"oauth:{state}", json.dumps({"role": role, "expires": time.time() + 600, "session": session["csrf"]})
+            f"oauth:{state}",
+            json.dumps(
+                {"role": role, "connection_id": connection_id, "expires": time.time() + 600, "session": session["csrf"]}
+            ),
         )
         params = {
             "client_id": client_id,
             "scope": ",".join(manifest(role)["oauth_config"]["scopes"]["bot"]),
             "state": state,
-            "redirect_uri": f"{settings.public_url}/slack/{role}/oauth/callback",
+            "redirect_uri": f"{settings.public_url}/connections/{connection_id}/slack/{role}/oauth/callback",
         }
         return RedirectResponse("https://slack.com/oauth/v2/authorize?" + urlencode(params))
 
     @app.get("/slack/{role}/oauth/callback")
-    async def callback(role: str, state: str = "", code: str = "", error: str = "", session=admin_session):
+    @app.get("/connections/{connection_id}/slack/{role}/oauth/callback")
+    async def callback(
+        role: str,
+        connection_id: str = "default",
+        state: str = "",
+        code: str = "",
+        error: str = "",
+        session=admin_session,
+    ):
         saved = store.meta(f"oauth:{state}")
         store.set_meta(f"oauth:{state}", "")
         data = json.loads(saved) if saved else {}
-        if data.get("role") != role or data.get("expires", 0) < time.time() or data.get("session") != session["csrf"]:
+        if (
+            data.get("connection_id") != connection_id
+            or data.get("role") != role
+            or data.get("expires", 0) < time.time()
+            or data.get("session") != session["csrf"]
+        ):
             raise HTTPException(400, "Installation expired; start Connect Slack again")
         if error or not code:
             return RedirectResponse("/?install=cancelled")
@@ -330,17 +414,18 @@ def create_app(directory=None):
             response = await client.post(
                 "https://slack.com/api/oauth.v2.access",
                 data={
-                    "client_id": slack_setting(role, "client_id"),
-                    "client_secret": slack_setting(role, "client_secret"),
+                    "client_id": slack_setting(connection_id, role, "client_id"),
+                    "client_secret": slack_setting(connection_id, role, "client_secret"),
                     "code": code,
-                    "redirect_uri": f"{settings.public_url}/slack/{role}/oauth/callback",
+                    "redirect_uri": f"{settings.public_url}/connections/{connection_id}/slack/{role}/oauth/callback",
                 },
             )
         token = response.json()
         if not token.get("ok"):
             raise HTTPException(400, "Slack installation failed: " + str(token.get("error", "unknown")))
-        key = f"slack_{'ai_' if role == 'ai' else ''}bot_token"
-        store.save_settings(settings.model_copy(update={key: token["access_token"]}))
+        value = connection(connection_id)
+        getattr(value, role).options["bot_token"] = token["access_token"]
+        update_connection(value)
         await engine.restart()
         return RedirectResponse("/?install=connected")
 

@@ -23,7 +23,7 @@ def console(tmp_path):
         "ADMIN_PASSWORD": "test-console-password-123",
     }
     proc = subprocess.Popen(
-        ["uv", "run", "--project", str(ROOT), "archivebox-slack"],
+        ["uv", "run", "--project", str(ROOT), "archivebox-chat-bot"],
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,

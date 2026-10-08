@@ -10,7 +10,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from .config import Settings
+from .config import Connection
 from .media import normalize_image
 from .models import Message
 from .text import size_label
@@ -34,20 +34,23 @@ def _link(value: str) -> str:
 
 
 class Zulip:
-    def __init__(self, settings: Settings, role: str = "capture", store=None):
+    def __init__(self, settings: Connection, role: str = "capture", store=None):
         if role not in ("capture", "ai"):
             raise ValueError("Choose a capture or ai Zulip bot")
         self.settings, self.role = settings, role
+        self.options = settings.account_options(role)
+        self.capabilities = {"reactions": True, "media": True, "history": True}
+        self.identity = {}
         self.store = store
         self.message_cursor = 0
         self.cursor_initialized = False
         self.cursor_key = ""
-        email = settings.zulip_ai_email if role == "ai" else settings.zulip_email
-        key = settings.zulip_ai_api_key if role == "ai" else settings.zulip_api_key
-        if not settings.zulip_url or not email or not key:
+        email = self.options.get("email", "")
+        key = self.options.get("api_key", "")
+        if not self.options.get("url", "") or not email or not key:
             raise ValueError(f"Enter the Zulip server URL and {role} bot email/API key")
         self.client = httpx.AsyncClient(
-            base_url=f"{settings.zulip_url}/api/v1/",
+            base_url=f"{self.options['url']}/api/v1/",
             auth=(email, key),
             timeout=30,
             headers={"User-Agent": "ArchiveBox-Slack/0.1 (Zulip)"},
@@ -133,7 +136,7 @@ class Zulip:
         if self.task and not self.task.done():
             return
         await self.check()
-        self.cursor_key = f"zulip:{self.settings.zulip_url}:{self.bot_id}:message_cursor"
+        self.cursor_key = f"zulip:{self.options['url']}:{self.bot_id}:message_cursor"
         if self.store:
             saved = self.store.meta(self.cursor_key)
             self.cursor_initialized = saved != ""
@@ -242,21 +245,10 @@ class Zulip:
         command = ""
         if self.role == "capture" and (is_dm or is_mention):
             pieces = text.split(maxsplit=1)
-            if pieces and pieces[0].casefold() in {"help", "save", "search", "status"}:
+            if pieces and pieces[0].casefold() in {"help", "save", "search", "status", "auto"}:
                 command = pieces[0].casefold()
                 text = pieces[1] if len(pieces) > 1 else ""
-        enabled = (
-            bool(command)
-            or (is_dm and self.settings.enable_dms)
-            or (is_mention and self.settings.enable_mentions)
-            or (
-                not is_dm
-                and self.role == "capture"
-                and self.settings.enable_new_urls
-                and channel == self.settings.new_channel
-            )
-        )
-        if not enabled or (await self.user(sender))["is_bot"]:
+        if (await self.user(sender))["is_bot"]:
             return None
         return Message(
             platform="zulip",
@@ -269,6 +261,7 @@ class Zulip:
             is_dm=is_dm,
             is_mention=is_mention,
             command=command,
+            user_name=raw.get("sender_full_name", sender),
         )
 
     async def recent(self, message: Message) -> list[str]:
@@ -303,7 +296,7 @@ class Zulip:
                 sender = str(row["sender_id"])
                 if sender not in users:
                     users[sender] = await self.user(sender)
-                if not users[sender]["is_bot"]:
+                if not users[sender]["is_bot"] or (self.role == "ai" and sender == self.bot_id):
                     humans.append(f"{users[sender]['name']}: {row['content']}")
                     if len(humans) == 10:
                         break
@@ -356,7 +349,7 @@ class Zulip:
             f"[{_markdown(urlsplit(snapshot['url']).hostname or snapshot['url'])}]({_link(snapshot['url'])})",
             (
                 f"{size_label(int(snapshot.get('output_size') or 0))} · "
-                f"👤 {_markdown(snapshot.get('persona') or self.settings.persona)}"
+                f"👤 {_markdown(snapshot.get('persona') or 'Default')}"
             ),
         ]
         if self.settings.upload_images:

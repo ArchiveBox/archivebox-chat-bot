@@ -13,6 +13,9 @@ class Message:
     is_dm: bool = False
     is_mention: bool = False
     command: str = ""
+    user_name: str = ""
+    is_bot: bool = False
+    connection: str = ""
 
     @property
     def key(self):

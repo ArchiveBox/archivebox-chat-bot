@@ -75,8 +75,8 @@ class ArchiveBox:
         page = await self.snapshots(limit=1)
         return {"ok": True, "snapshots": page["total_items"], "url": self.settings.archivebox_public_url}
 
-    async def add(self, urls: list[str], submitter: str) -> dict:
-        tags = ["slack", submitter.replace(",", " ").strip()]
+    async def add(self, urls: list[str], submitter: str, source: str = "slack") -> dict:
+        tags = [source, submitter.replace(",", " ").strip()]
         result = await self._request(
             "POST",
             "/api/v1/cli/add",

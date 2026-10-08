@@ -1,9 +1,9 @@
 """Downloadable Slack manifests for self-hosted and distributable installs."""
 
 
-def manifest(role="capture", transport="socket", public_url=""):
+def manifest(role="capture", transport="socket", public_url="", connection_id="default"):
     ai = role == "ai"
-    name = "ArchiveBox AI" if ai else "ArchiveBox"
+    name = "ArchiveBox AI Bot" if ai else "ArchiveBox Bot"
     result = {
         "display_information": {
             "name": name,
@@ -70,9 +70,13 @@ def manifest(role="capture", transport="socket", public_url=""):
             "should_escape": True,
         }
         if transport == "http":
-            command["url"] = f"{public_url}/slack/{role}/commands"
+            command["url"] = f"{public_url}/connections/{connection_id}/slack/{role}/commands"
         result["features"]["slash_commands"] = [command]
     if transport == "http":
-        result["settings"]["event_subscriptions"]["request_url"] = f"{public_url}/slack/{role}/events"
-        result["oauth_config"]["redirect_urls"] = [f"{public_url}/slack/{role}/oauth/callback"]
+        result["settings"]["event_subscriptions"]["request_url"] = (
+            f"{public_url}/connections/{connection_id}/slack/{role}/events"
+        )
+        result["oauth_config"]["redirect_urls"] = [
+            f"{public_url}/connections/{connection_id}/slack/{role}/oauth/callback"
+        ]
     return result

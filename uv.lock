@@ -198,7 +198,7 @@ wheels = [
 ]
 
 [[package]]
-name = "archivebox-slack"
+name = "archivebox-chat-bot"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -207,6 +207,8 @@ dependencies = [
     { name = "httpx" },
     { name = "pillow" },
     { name = "pydantic" },
+    { name = "pydle", extra = ["sasl"] },
+    { name = "qrcode", extra = ["pil"] },
     { name = "slack-sdk" },
     { name = "uvicorn" },
 ]
@@ -226,6 +228,8 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pydantic", specifier = ">=2.10,<3" },
+    { name = "pydle", extras = ["sasl"], specifier = ">=1.1,<2" },
+    { name = "qrcode", extras = ["pil"], specifier = ">=8,<9" },
     { name = "slack-sdk", specifier = ">=3.35,<4" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
 ]
@@ -872,6 +876,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pure-sasl"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/b7/a0d688f86c869073cc28c0640899394a1cf68a6d87ee78a09565e9037da6/pure-sasl-0.6.2.tar.gz", hash = "sha256:53c1355f5da95e2b85b2cc9a6af435518edc20c81193faa0eea65fdc835138f4", size = 11617, upload-time = "2019-10-14T21:43:57.13Z" }
+
+[[package]]
 name = "pydantic"
 version = "2.13.5"
 source = { registry = "https://pypi.org/simple" }
@@ -962,6 +972,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pydle"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/fc/b418bb4ce8fa579ff775c443d83216cdc4ef0c721d0c5f45fb3086245f4c/pydle-1.2.0.tar.gz", hash = "sha256:e830debe5f10b1ba2d2bf8ea4c5c26427989c8a842edcc42d194b6cff6aeac11", size = 37996, upload-time = "2026-09-04T17:14:25.175Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/2d/970a49495d2eae0261ab4aad9a575acd6a1b0c7fbaa67f9d66e54ad25193/pydle-1.2.0-py3-none-any.whl", hash = "sha256:46f857fe41cf5b10dad84034abfa0f76dfec679bf01fefcba297eb8febd889da", size = 47643, upload-time = "2026-09-04T17:14:23.917Z" },
+]
+
+[package.optional-dependencies]
+sasl = [
+    { name = "pure-sasl" },
+]
+
+[[package]]
 name = "pyee"
 version = "13.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1009,6 +1033,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/43/7c/d36d04db312ecf4298932ef77e6e4a9e8ad017906e24e34f0b0c361a2473/pytest_asyncio-1.4.0.tar.gz", hash = "sha256:c6c0d2259945122819f171a32ecea2c349ead889ee28176caaf492143424be42", size = 58514, upload-time = "2026-05-26T09:56:04.083Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/03/e2/08a497ef684b88559c9cc5f4ad53a37e7b99e727094a86d6ea32536d5d3c/pytest_asyncio-1.4.0-py3-none-any.whl", hash = "sha256:933ca923a23075a87fb7070c0ec272a6848489824d887c85c812670932835aa1", size = 16930, upload-time = "2026-05-26T09:56:02.576Z" },
+]
+
+[[package]]
+name = "qrcode"
+version = "8.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8f/b2/7fc2931bfae0af02d5f53b174e9cf701adbb35f39d69c2af63d4a39f81a9/qrcode-8.2.tar.gz", hash = "sha256:35c3f2a4172b33136ab9f6b3ef1c00260dd2f66f858f24d88418a015f446506c", size = 43317, upload-time = "2025-05-01T15:44:24.726Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/b8/d2d6d731733f51684bbf76bf34dab3b70a9148e8f2cef2bb544fccec681a/qrcode-8.2-py3-none-any.whl", hash = "sha256:16e64e0716c14960108e85d853062c9e8bba5ca8252c0b4d0231b9df4060ff4f", size = 45986, upload-time = "2025-05-01T15:44:22.781Z" },
+]
+
+[package.optional-dependencies]
+pil = [
+    { name = "pillow" },
 ]
 
 [[package]]

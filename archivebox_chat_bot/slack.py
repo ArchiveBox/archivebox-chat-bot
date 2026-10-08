@@ -17,14 +17,17 @@ log = logging.getLogger(__name__)
 
 
 class Slack:
-    def __init__(self, settings, role="capture"):
+    def __init__(self, settings, role="capture", *, archive_url=""):
+        self.options = settings.account_options(role)
+        self.archive_url = archive_url
+        self.capabilities = {"reactions": True, "media": True, "history": True}
         self.settings, self.role = settings, role
-        token = settings.slack_ai_bot_token if role == "ai" else settings.slack_bot_token
+        token = self.options.get("bot_token", "")
         self.client = AsyncWebClient(
             token=token, timeout=30, retry_handlers=[AsyncRateLimitErrorRetryHandler(max_retry_count=3)]
         )
         self.history = AsyncWebClient(
-            token=settings.slack_history_token or token,
+            token=self.options.get("history_token") or token,
             timeout=30,
             retry_handlers=[AsyncRateLimitErrorRetryHandler(max_retry_count=3)],
         )
@@ -45,8 +48,8 @@ class Slack:
     async def start(self, on_message):
         await self.check()
         self.on_message = on_message
-        app_token = self.settings.slack_ai_app_token if self.role == "ai" else self.settings.slack_app_token
-        if self.settings.slack_transport == "socket":
+        app_token = self.options.get("app_token", "")
+        if self.options.get("transport", "socket") == "socket":
             self.socket = SocketModeClient(app_token=app_token, web_client=self.client)
             self.socket.socket_mode_request_listeners.append(self._envelope)
             await self.socket.connect()
@@ -157,7 +160,7 @@ class Slack:
                                 {
                                     "type": "button",
                                     "text": {"type": "plain_text", "text": "Open ArchiveBox"},
-                                    "url": self.settings.archivebox_public_url,
+                                    "url": self.archive_url,
                                 }
                             ],
                         },
@@ -227,7 +230,8 @@ class Slack:
                 channel=message.channel, ts=message.thread, latest=message.ts, inclusive=True, limit=15, cursor=cursor
             )
             for item in result["messages"]:
-                if item.get("ts") != message.ts and not item.get("bot_id") and item.get("user"):
+                own_reply = self.role == "ai" and item.get("user") == self.identity.get("user_id")
+                if item.get("ts") != message.ts and item.get("user") and (not item.get("bot_id") or own_reply):
                     tail.append(item.get("text", ""))
             cursor = result.get("response_metadata", {}).get("next_cursor")
             if not cursor:

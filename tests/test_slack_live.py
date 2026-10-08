@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from archivebox_slack.archivebox import ArchiveBox
-from archivebox_slack.config import Settings
-from archivebox_slack.slack import Slack
+from archivebox_chat_bot.archivebox import ArchiveBox
+from archivebox_chat_bot.config import Settings
+from archivebox_chat_bot.slack import Slack
 
 
 async def test_real_bot_authentication():

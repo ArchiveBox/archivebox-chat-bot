@@ -11,10 +11,8 @@ from slack_sdk.errors import SlackApiError
 
 from .archivebox import ArchiveBox
 from .models import Message
-from .slack import Slack
 from .store import now
 from .text import extract_urls, slack_escape, submitter_tag
-from .zulip import Zulip
 
 log = logging.getLogger(__name__)
 
@@ -30,9 +28,11 @@ def safe_error(error):
 
 
 class Engine:
-    def __init__(self, store):
+    def __init__(self, store, settings, connection, adapters):
         self.store = store
-        self.settings = store.settings()
+        self.settings = settings
+        self.connection = connection
+        self.adapters = adapters
         self.archive = None
         self.bots = {}
         self.tasks = set()
@@ -43,53 +43,34 @@ class Engine:
         self.lock = asyncio.Lock()
 
     def scope(self, role="capture"):
-        bot = self.bots.get(role)
-        identity = getattr(bot, "identity", {})
-        return hashlib.sha256(
-            json.dumps(
-                [
-                    self.settings.platform,
-                    self.settings.archivebox_url,
-                    self.settings.saved_channel if role == "capture" else "",
-                    role,
-                    identity.get("team_id", ""),
-                    identity.get("user_id", ""),
-                    self.settings.zulip_url if self.settings.platform == "zulip" else "",
-                    (self.settings.zulip_email if role == "capture" else self.settings.zulip_ai_email)
-                    if self.settings.platform == "zulip"
-                    else "",
-                ]
-            ).encode()
-        ).hexdigest()[:24]
+        identity = getattr(self.bots.get(role), "identity", {})
+        options = self.connection.account_options(role)
+        # Preserve the existing single-connection identity during settings migration.
+        identity_parts = [
+            self.connection.platform,
+            self.settings.archivebox_url,
+            self.connection.saved_channel if role == "capture" else "",
+            role,
+            identity.get("team_id", ""),
+            identity.get("user_id", ""),
+            options.get("url", "") if self.connection.platform == "zulip" else "",
+            options.get("email", "") if self.connection.platform == "zulip" else "",
+        ]
+        if self.connection.id != "default":
+            identity_parts.append(self.connection.id)
+        return hashlib.sha256(json.dumps(identity_parts).encode()).hexdigest()[:24]
 
     async def start(self):
         self.error = ""
-        self.settings = self.store.settings()
         self.archive = ArchiveBox(self.settings)
-        if self.settings.archivebox_token:
-            try:
-                self.connections["archivebox"] = await asyncio.wait_for(self.archive.check(), timeout=8)
-            except Exception as exc:
-                log.exception("ArchiveBox connection failed")
-                self.connections["archivebox"] = {"ok": False, "error": safe_error(exc)}
-        adapter = Slack if self.settings.platform == "slack" else Zulip
         for role in ("capture", "ai"):
-            if role == "ai" and not self.settings.enable_ai:
-                continue
-            token = (
-                (self.settings.slack_bot_token if role == "capture" else self.settings.slack_ai_bot_token)
-                if self.settings.platform == "slack"
-                else (self.settings.zulip_api_key if role == "capture" else self.settings.zulip_ai_api_key)
-            )
-            if not token:
+            if not getattr(self.connection, role).enabled:
                 continue
             try:
-                bot = (
-                    adapter(self.settings, role) if adapter is Slack else adapter(self.settings, role, store=self.store)
-                )
+                bot = self.adapters.create(self.connection, role, self.settings)
                 self.bots[role] = bot
                 await bot.start(self.receive)
-                self.connections[role] = {"ok": True}
+                self.connections[role] = {"ok": True, "capabilities": getattr(bot, "capabilities", {})}
             except Exception as exc:
                 log.exception("Bot connection failed")
                 self.connections[role] = {"ok": False, "error": safe_error(exc)}
@@ -114,14 +95,9 @@ class Engine:
         self.bots.clear()
         self.connections.clear()
 
-    async def restart(self):
-        async with self.lock:
-            await self.close()
-            await self.start()
-
     def permitted(self, message):
-        s = self.settings
-        if message.platform != s.platform:
+        s = self.connection
+        if message.is_bot or message.platform != s.platform:
             return
         if s.allowed_users and message.user not in s.allowed_users:
             return
@@ -133,7 +109,7 @@ class Engine:
         ):
             return
         if message.role == "ai":
-            if not s.enable_ai or message.user not in s.ai_allowed_users:
+            if not s.ai.enabled or message.user not in s.ai_allowed_users:
                 return
             enabled = (
                 message.command == "__stop"
@@ -147,10 +123,17 @@ class Engine:
                 (message.is_dm and s.enable_dms)
                 or (message.is_mention and s.enable_mentions)
                 or (message.channel == s.new_channel and s.enable_new_urls)
+                or (
+                    not message.is_dm
+                    and message.channel != s.saved_channel
+                    and self.store.group_policy(s.id, message.channel, s.auto_archive_groups)
+                )
             )
         return enabled
 
     async def receive(self, message):
+        message.connection = self.connection.id
+        self.store.remember(self.connection.id, message)
         if self.permitted(message):
             self.store.enqueue(
                 self.scope(message.role) + ":" + message.key,
@@ -172,7 +155,7 @@ class Engine:
                         continue
                     if len(self.tasks) >= 4:
                         continue
-                    if not self.settings.archivebox_token or not self.bots.get("capture"):
+                    if not self.settings.archivebox_token or not self.bots.get(job["payload"].get("role", "capture")):
                         break
                     self.store.update(job["id"], "running")
                     task = asyncio.create_task(self.process(job))
@@ -194,7 +177,7 @@ class Engine:
     async def stop_agent(self, stop_job):
         message = Message(**stop_job["payload"])
         bot = self.bots.get("ai")
-        if not bot or message.user not in self.settings.ai_allowed_users:
+        if not bot or message.user not in self.connection.ai_allowed_users:
             self.store.update(stop_job["id"], "ignored")
             return
         for job in self.store.jobs("running", scope=self.scope("ai")):
@@ -218,6 +201,8 @@ class Engine:
         self.store.update(stop_job["id"], "done")
 
     async def reaction(self, bot, message, status):
+        if not getattr(bot, "capabilities", {}).get("reactions", True):
+            return
         try:
             await bot.react(message, status)
         except Exception as exc:
@@ -231,12 +216,12 @@ class Engine:
         try:
             if job["kind"] == "announcement":
                 bot = self.bots["capture"]
-                if not self.settings.enable_saved_urls or not self.settings.saved_channel:
+                if not self.connection.enable_saved_urls or not self.connection.saved_channel:
                     self.store.update(job["id"], "queued")
                     return
                 snapshot = job["payload"]
                 media = {}
-                if self.settings.upload_images:
+                if self.connection.upload_images:
                     for kind in ("screenshot", "favicon"):
                         artifact = await self.archive.artifact(snapshot, kind)
                         if artifact:
@@ -255,7 +240,7 @@ class Engine:
             if not bot:
                 raise ValueError("This bot is disabled; enable it before retrying")
             user = await bot.user(message.user)
-            if user["is_bot"] or (user["is_guest"] and not self.settings.allow_guests):
+            if user["is_bot"] or (user["is_guest"] and not self.connection.allow_guests):
                 self.store.update(job["id"], "ignored")
                 return
             name = submitter_tag(user["name"], message.user)
@@ -265,7 +250,9 @@ class Engine:
                 await self.reaction(bot, message, "white_check_mark")
                 self.store.update(job["id"], "done")
                 return
-            context = await bot.recent(message) if message.is_mention else []
+            context = []
+            if message.is_mention or (message.role == "ai" and message.is_dm):
+                context = await bot.recent(message)
             text = "\n".join([*context, message.text])
             if message.role == "ai":
                 title = message.text
@@ -277,7 +264,13 @@ class Engine:
                 self.store.update(
                     job["id"], "running", {"session": session, "session_url": self.archive.session_url(session)}
                 )
-                prompt = f"{self.settings.ai_prompt} Keep replies on one compact line whenever possible; avoid lists unless asked.\n\nRequest from {name} ({message.user}) on {message.platform}.\n<conversation>\n{text}\n</conversation>"
+                prompt = (
+                    f"{self.settings.ai_prompt} Keep replies on one compact line whenever possible; avoid lists unless asked.\n"
+                    f"ArchiveBox public URL: {self.settings.archivebox_public_url}\n"
+                    f"Collection directory: {session['directory']}\n\n"
+                    f"Request from {name} ({message.user}) on {message.platform}. Earlier conversation is context; "
+                    f"the final message is the current request.\n<conversation>\n{text}\n</conversation>"
+                )
                 answer = await self.archive.prompt_session(session, prompt)
                 await bot.post_text(message, answer)
                 if message.platform == "slack":
@@ -294,7 +287,7 @@ class Engine:
                 return
             if len(urls) > self.settings.max_urls:
                 raise ValueError(f"Message contains {len(urls)} URLs; configured limit is {self.settings.max_urls}")
-            result = await self.archive.add(urls, name)
+            result = await self.archive.add(urls, name, message.platform)
             committed = True
             result["urls"] = urls
             self.store.update(job["id"], "waiting", result)
@@ -325,11 +318,26 @@ class Engine:
 
     async def command(self, bot, message):
         if message.command == "help":
-            prefix = "/archivebox" if message.platform == "slack" else "@ArchiveBox"
-            text = f"📚 {prefix} save <URLs> · search <words> · status · help"
+            prefix = "/archivebox"
+            text = f"📚 {prefix} save <URLs> · search <words> · status · auto on/off · help"
         elif message.command == "status":
             status = await self.archive.check()
             text = f"✅ ArchiveBox connected · {status['snapshots']} snapshots · persona {self.settings.persona}"
+        elif message.command == "auto":
+            option = message.text.strip().lower()
+            if message.is_dm:
+                text = "Use /archivebox auto on or off inside the group you want to configure."
+            elif message.user not in self.connection.admin_users:
+                text = "Only configured bot administrators can change group archiving."
+            elif option not in {"on", "off", "status", ""}:
+                text = "Use /archivebox auto on, off, or status."
+            else:
+                if option in {"on", "off"}:
+                    self.store.set_group(self.connection.id, message.channel, auto_archive=option == "on")
+                enabled = self.store.group_policy(
+                    self.connection.id, message.channel, self.connection.auto_archive_groups
+                )
+                text = "🔗 Archive every link in this group: " + ("on" if enabled else "off")
         elif message.command == "search":
             if not message.text.strip():
                 text = "Use /archivebox search <words>"
@@ -339,13 +347,15 @@ class Engine:
                     links = [
                         f"<{self.archive.detail_url(s)}|{slack_escape(s.get('title') or s['url'])}>" for s in results
                     ]
-                else:
+                elif message.platform == "zulip":
                     from .zulip import _link, _markdown
 
                     links = [
                         f"[{_markdown(s.get('title') or s['url'])}]({_link(self.archive.detail_url(s))})"
                         for s in results
                     ]
+                else:
+                    links = [f"{s.get('title') or s['url']} — {self.archive.detail_url(s)}" for s in results]
                 text = " · ".join(links) or "No saved pages found."
 
         else:
@@ -354,7 +364,7 @@ class Engine:
 
     async def monitor(self):
         for job in self.store.jobs("waiting", limit=100, scope=self.scope()):
-            if job["payload"]["platform"] != self.settings.platform:
+            if job["payload"]["platform"] != self.connection.platform:
                 continue
             crawl = await self.archive.crawl(job["result"]["crawl_id"])
             if crawl["status"] != "sealed":
@@ -415,7 +425,11 @@ class Engine:
             )
 
     async def discover(self):
-        if not self.settings.enable_saved_urls or not self.settings.saved_channel or not self.settings.archivebox_token:
+        if (
+            not self.connection.enable_saved_urls
+            or not self.connection.saved_channel
+            or not self.settings.archivebox_token
+        ):
             return
         cursor = self.store.meta("sealed_cursor:" + self.scope())
         # Fixed upper bound plus overlap handles captures finishing during pagination.

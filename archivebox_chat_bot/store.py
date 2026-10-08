@@ -6,7 +6,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .config import SECRET_FIELDS, Settings
+from .config import Settings, public_settings
 
 
 def now():
@@ -28,6 +28,16 @@ class Store:
                 id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL, scope TEXT NOT NULL DEFAULT '',
                 state TEXT NOT NULL DEFAULT 'queued', result TEXT NOT NULL DEFAULT '{}',
                 error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS history (
+                seq INTEGER PRIMARY KEY AUTOINCREMENT, connection TEXT NOT NULL, role TEXT NOT NULL,
+                channel TEXT NOT NULL, message_id TEXT NOT NULL, thread TEXT NOT NULL, user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL, text TEXT NOT NULL, is_bot INTEGER NOT NULL,
+                UNIQUE(connection,role,channel,message_id));
+            CREATE INDEX IF NOT EXISTS history_channel ON history(connection,role,channel,seq);
+            CREATE TABLE IF NOT EXISTS groups (
+                connection TEXT NOT NULL, channel TEXT NOT NULL, name TEXT NOT NULL,
+                is_dm INTEGER NOT NULL DEFAULT 0, auto_archive INTEGER,
+                PRIMARY KEY(connection,channel));
             CREATE INDEX IF NOT EXISTS jobs_state ON jobs(state, created_at);
         """)
         if "scope" not in {row[1] for row in self.db.execute("PRAGMA table_info(jobs)")}:
@@ -47,11 +57,86 @@ class Store:
             self.db.execute("INSERT OR REPLACE INTO settings VALUES (1,?)", (settings.model_dump_json(),))
 
     def public_settings(self):
-        values = self.settings().model_dump()
-        for key in SECRET_FIELDS:
-            values[key] = ""
-        values["configured_secrets"] = [key for key in SECRET_FIELDS if getattr(self.settings(), key)]
-        return values
+        return public_settings(self.settings().model_dump())
+
+    def remember(self, connection, message):
+        with self.db:
+            self.db.execute(
+                "INSERT OR IGNORE INTO history(connection,role,channel,message_id,thread,user_id,user_name,text,is_bot) VALUES(?,?,?,?,?,?,?,?,?)",
+                (
+                    connection,
+                    message.role,
+                    message.channel,
+                    message.ts,
+                    message.thread,
+                    message.user,
+                    message.user_name,
+                    message.text,
+                    int(message.is_bot),
+                ),
+            )
+            self.db.execute(
+                "DELETE FROM history WHERE connection=? AND role=? AND channel=? AND seq NOT IN "
+                "(SELECT seq FROM history WHERE connection=? AND role=? AND channel=? ORDER BY seq DESC LIMIT 200)",
+                (connection, message.role, message.channel) * 2,
+            )
+            self.db.execute(
+                "INSERT OR IGNORE INTO groups(connection,channel,name,is_dm) VALUES(?,?,?,?)",
+                (connection, message.channel, message.channel, int(message.is_dm)),
+            )
+
+    def recent(self, connection, message):
+        rows = self.db.execute(
+            "SELECT text FROM history WHERE connection=? AND role=? AND channel=? AND message_id!=? "
+            "AND (?='' OR thread=? OR message_id=?) AND (is_bot=0 OR ?='ai') "
+            "AND seq < COALESCE((SELECT seq FROM history WHERE connection=? AND role=? AND channel=? AND message_id=?),9223372036854775807) "
+            "ORDER BY seq DESC LIMIT 10",
+            (
+                connection,
+                message.role,
+                message.channel,
+                message.ts,
+                message.thread,
+                message.thread,
+                message.thread,
+                message.role,
+                connection,
+                message.role,
+                message.channel,
+                message.ts,
+            ),
+        ).fetchall()
+        return [row[0] for row in reversed(rows)]
+
+    def groups(self, connection):
+        return [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT * FROM groups WHERE connection=? ORDER BY name", (connection,)
+            ).fetchall()
+        ]
+
+    def group_policy(self, connection, channel, default=False):
+        row = self.db.execute(
+            "SELECT auto_archive FROM groups WHERE connection=? AND channel=?", (connection, channel)
+        ).fetchone()
+        return bool(row[0]) if row and row[0] is not None else default
+
+    def set_group(self, connection, channel, *, name=None, auto_archive=None, is_dm=False):
+        with self.db:
+            self.db.execute(
+                "INSERT OR IGNORE INTO groups(connection,channel,name,is_dm) VALUES(?,?,?,?)",
+                (connection, channel, name or channel, int(is_dm)),
+            )
+            if name is not None:
+                self.db.execute(
+                    "UPDATE groups SET name=? WHERE connection=? AND channel=?", (name, connection, channel)
+                )
+            if auto_archive is not None:
+                self.db.execute(
+                    "UPDATE groups SET auto_archive=? WHERE connection=? AND channel=?",
+                    (int(auto_archive), connection, channel),
+                )
 
     def meta(self, key, default=""):
         row = self.db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()

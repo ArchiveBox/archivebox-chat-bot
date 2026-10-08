@@ -1,5 +1,5 @@
 services:
-  archivebox-slack:
+  archivebox-chat-bot:
     build: .
     ports:
       - "127.0.0.1:${CONSOLE_PORT:-8001}:8001"

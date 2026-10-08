@@ -1,5 +1,5 @@
-from archivebox_slack.store import Store
-from archivebox_slack.text import extract_urls, submitter_tag
+from archivebox_chat_bot.store import Store
+from archivebox_chat_bot.text import extract_urls, submitter_tag
 
 
 def test_slack_markdown_and_balanced_url_extraction():

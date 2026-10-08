@@ -1,21 +1,32 @@
 <div align="center">
 
-# 📚 ArchiveBox for Slack
+# 📚 ArchiveBox Chat Bot
 
 ### Your team’s links, with a permanent home.
 
 **Share a link · Save a thread · Talk to your archive**
 
-[![Checks](https://github.com/ArchiveBox/archivebox-slack/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-slack/actions/workflows/check.yml)
+[![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE)
 ![Slack + Zulip](https://img.shields.io/badge/Slack_%2B_Zulip-native-775586)
 ![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
 
 [Get connected](#-get-connected) · [What it does](#-quiet-by-default) · [AI assistant](#-meet-archiveboxai) · [Zulip](#-zulip-too) · [Development](#-development)
 
-![ArchiveBox connection console](screenshots/console.png)
-
 </div>
+
+<table>
+  <tr>
+    <th width="33%">💬 Save a conversation</th>
+    <th width="33%">📥 DM your links</th>
+    <th width="33%">✧ Put your agent to work</th>
+  </tr>
+  <tr>
+    <td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Mention ArchiveBox in a research channel to save URLs from the preceding thread message"></a></td>
+    <td width="33%" valign="top"><a href="screenshots/slack-dm.jpg"><img src="screenshots/slack-dm.jpg" width="100%" alt="DM URLs to ArchiveBox and receive a check reaction after the real captures finish"></a></td>
+    <td width="33%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="ArchiveBox AI plans, captures, and verifies an HTTP caching reference archive in a real Slack DM conversation"></a></td>
+  </tr>
+</table>
 
 ## ✨ Quiet by default
 
@@ -39,13 +50,15 @@
 
 ## 🚀 Get connected
 
+![ArchiveBox connection console](screenshots/console.png)
+
 **Already running ArchiveBox?** Bring its **base URL + admin API key**, then connect Slack.
 
 ```bash
-git clone https://github.com/ArchiveBox/archivebox-slack.git
-cd archivebox-slack
+git clone https://github.com/ArchiveBox/archivebox-chat-bot.git
+cd archivebox-chat-bot
 docker compose up -d --build
-docker compose exec archivebox-slack cat /data/admin-password
+docker compose exec archivebox-chat-bot cat /data/admin-password
 ```
 
 Open **[localhost:8001](http://localhost:8001)** → sign in with the generated password.
@@ -86,7 +99,7 @@ docker compose --profile archivebox up -d --build
 - Same Compose network: use `http://archivebox:5797` internally.
 - **Public archive URL** controls links teammates click; Docker service names are not public links.
 - Separate ArchiveBox admin hostname? Standard `api.` / `web.` → `admin.` discovery is automatic; an internal admin override is available.
-- Copy the `archivebox-slack` service into your Compose project, preserving its build path and `/data` volume.
+- Copy the `archivebox-chat-bot` service into your Compose project, preserving its build path and `/data` volume.
 - Run **one bridge process** per data volume.
 
 </details>
@@ -135,14 +148,13 @@ docker compose --profile archivebox up -d --build
 
 - Uses ArchiveBox’s existing **OpenCode providers, configuration, tools, and session database**.
 - Every DM or mention starts a **new, titled OpenCode session** in the collection directory.
+- Follow-ups include recent conversation context, including the AI bot's own replies.
 - Native Slack agent entry, suggested prompts, and session status.
 - Activity links open the corresponding session in ArchiveBox’s embedded OpenCode UI.
 - Native Stop events abort the corresponding OpenCode work.
 - Replies default to **one concise line**; longer answers only when requested.
 - **No second model-provider account or copied provider API key.**
 - Trusted AI users can exercise the configured agent’s tools and collection access; prompt preferences are not a sandbox.
-
-![A real one-line Slack AI reply](screenshots/slack-ai.jpg)
 
 ## 💬 Zulip, too
 
@@ -228,7 +240,7 @@ Switch **Connections → Zulip**.
 
 ```bash
 uv sync
-uv run archivebox-slack
+uv run archivebox-chat-bot
 uv run pytest -xq
 uv run ruff check .
 uv run ruff format --check .
@@ -261,6 +273,6 @@ uv run pytest -xq tests/test_zulip_live.py
 
 **Share something worth keeping.**
 
-[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) · [Issues](https://github.com/ArchiveBox/archivebox-slack/issues) · [MIT license](LICENSE)
+[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) · [Issues](https://github.com/ArchiveBox/archivebox-chat-bot/issues) · [MIT license](LICENSE)
 
 </div>
