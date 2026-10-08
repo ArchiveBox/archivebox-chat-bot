@@ -14,7 +14,7 @@
 
 ## 🏛️ `@ArchiveBox` Bot
 
-- **mention @ArchiveBox in any thread** → saves all URLs mentioned in the last 10 messages
+- **mention @ArchiveBox in any thread** → saves all URLs found in the last 10 messages
 - **DM @ArchiveBox bot with any text** → archives every URL in your DM, AI bot can also handle complex tasks
 - **Add @ArchiveBox to group chats** → optionally archive all URLs shared in groups it's added to
 - **Auto-tags URLs with source info** → `slack,bob,reading-list` (connector, user, channel name)
