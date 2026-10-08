@@ -325,7 +325,7 @@ docker compose up -d
 
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
 - **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
-- **Personal account:** enable **Include my own messages** for capture in selected chats, including Signal Note to Self. Bot replies are tracked separately so they are not captured again; this option does not enable AI replies to your own messages.
+- **Personal account:** enable **Archive my own messages** for capture in selected chats, including Signal Note to Self. Bot replies are tracked separately so they are not captured again; this option does not enable AI replies to your own messages.
 
 <p><strong>Live Signal check (2026-10-08):</strong> Real Signal Desktop messages in Note to Self and the dedicated ArchiveBox Cabbage Test group each queued two Ars Technica URLs through Beeper. These captures are still waiting in Cabbage's ArchiveBox queue. The group also receives Saved URLs notifications from the collection; those notifications are not proof that the pending Signal captures completed.</p>
 
@@ -354,7 +354,11 @@ docker compose up -d
 - **Inbox:** checked every 30 seconds; new mail only by default. Optional first-connection import of existing mail.
 - **Inbound only:** no SMTP or replies; preserves read/unread flags. PDF, Office, and image attachments are not inspected or uploaded.
 
+<p><strong>Live Gmail → AgentMail check (2026-10-08):</strong> A real Gmail message with two Ars Technica article URLs was sent through Gmail and read from the AgentMail inbox by Cabbage. The IMAP cursor advanced to UID 4 and the capture job queued both URLs in ArchiveBox; the crawl is still waiting for the ArchiveBox runner, so this is ingestion evidence rather than completed snapshots.</p>
+
 <img src="screenshots/email-agentmail-connected-cabbage.jpg" width="100%" alt="Cabbage Chatbot Admin Console showing the connected AgentMail IMAP inbox with the password retained securely">
+
+<img src="screenshots/email-agentmail-accepted-cabbage.jpg" width="100%" alt="Gmail showing Message sent after sending two Ars Technica links to the Cabbage AgentMail inbox">
 
 [Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
 
