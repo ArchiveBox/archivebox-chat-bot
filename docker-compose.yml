@@ -1,6 +1,7 @@
 services:
   archivebox-chat-bot:
-    build: .
+    image: archivebox/archivebox-chat-bot:latest
+    # build: .
     ports:
       - "127.0.0.1:${CONSOLE_PORT:-5798}:5798"
     volumes:

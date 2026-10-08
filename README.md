@@ -29,7 +29,8 @@
 ```bash
 git clone https://github.com/ArchiveBox/archivebox-chat-bot.git
 cd archivebox-chat-bot
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 1. **[Open Chatbot Admin Console](http://localhost:5798)** → choose your password → ArchiveBox server URL + API key.
@@ -38,6 +39,9 @@ docker compose up -d --build
 
 - **Data:** `./archivebox-chat-bot/` · [docker-compose.yml](docker-compose.yml).
 - **Optional password preset:** uncomment `ADMIN_PASSWORD` to skip the first-run screen.
+- **Updates:** run `docker compose pull && docker compose up -d` again.
+- **Images:** `archivebox/archivebox-chat-bot:latest` on Docker Hub, or `ghcr.io/archivebox/archivebox-chat-bot:latest`, for amd64 and arm64. Each successful `main` build publishes `latest`, `build-<CI run number>`, and `sha-<full commit SHA>` after tests and container startup checks pass. No manual version bump is needed; **Check → Run workflow** also rebuilds `main`.
+- **Local development:** uncomment `build: .` in Compose and run `docker compose up -d --build`.
 
 <a href="screenshots/first-run.jpg"><img src="screenshots/first-run.jpg" width="320" alt="First-run Chatbot Admin Console password setup"></a>
 

@@ -1,7 +1,17 @@
 name: Check
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  DOCKERHUB_IMAGE: archivebox/archivebox-chat-bot
+  GHCR_IMAGE: ghcr.io/archivebox/archivebox-chat-bot
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,4 +25,152 @@ jobs:
       - run: uv run python -m pytest -xq tests/local
       - run: uv run python -m pytest -xq tests/test_email_live.py
       - run: docker compose config --quiet
-      - run: docker build -t archivebox-chat-bot:test .
+
+  docker:
+    name: Docker (${{ matrix.arch }})
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      COMPOSE_FILE: ${{ github.workspace }}/docker-compose.yml
+      COMPOSE_PROJECT_NAME: chatbot-ci
+      CONSOLE_PORT: 5798
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          load: ${{ github.ref != 'refs/heads/main' }}
+          tags: ${{ github.ref != 'refs/heads/main' && format('{0}:latest', env.DOCKERHUB_IMAGE) || '' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=build-${{ github.run_number }}
+            org.opencontainers.image.licenses=MIT
+          outputs: |
+            ${{ github.ref == 'refs/heads/main' && format('type=image,"name={0},{1}",push-by-digest=true,name-canonical=true,push=true', env.DOCKERHUB_IMAGE, env.GHCR_IMAGE) || '' }}
+          cache-from: type=gha,scope=docker-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}
+      - name: Load the published image for testing
+        if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE: ${{ env.DOCKERHUB_IMAGE }}@${{ steps.build.outputs.digest }}
+        run: |
+          docker pull "$IMAGE"
+          docker tag "$IMAGE" "$DOCKERHUB_IMAGE:latest"
+      - name: Verify Compose startup and persistent password setup
+        run: |
+          mkdir -p "$RUNNER_TEMP/chatbot-smoke"
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" up -d --wait --wait-timeout 60 --pull never
+          url="http://127.0.0.1:$CONSOLE_PORT"
+          curl -fsS "$url/healthz" | jq -e '.ok == true'
+          curl -fsS "$url/" | grep '<title>Chatbot Admin Console' >/dev/null
+          curl -fsS "$url/auth/setup" | jq -e '.required == true'
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"password":"ci-smoke-password-12345"}' "$url/auth/setup" | jq -e '.csrf | type == "string" and length > 20'
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" exec -T --user 1000 archivebox-chat-bot \
+            sh -c 'test -s /data/bridge.sqlite3 && test -w /data/bridge.sqlite3 && grep -E "^Uid:[[:space:]]+1000[[:space:]]+1000[[:space:]]+1000[[:space:]]+1000$" /proc/1/status && test -s /app/connectors/dist/worker.js && node --version'
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" down
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" up -d --wait --wait-timeout 60 --pull never
+          curl -fsS "$url/auth/setup" | jq -e '.required == false'
+          curl -fsS -H 'Content-Type: application/json' \
+            -d '{"password":"ci-smoke-password-12345"}' "$url/auth/login" | jq -e '.csrf | type == "string" and length > 20'
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" logs
+          docker compose --project-directory "$RUNNER_TEMP/chatbot-smoke" down
+      - name: Export tested digest
+        if: github.ref == 'refs/heads/main'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish multi-platform images
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Login to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish and verify both architectures in both registries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_TAG: build-${{ github.run_number }}
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          set -euo pipefail
+          digests=(*)
+          test "${#digests[@]}" -eq 2
+          main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)"
+          for image in "$DOCKERHUB_IMAGE" "$GHCR_IMAGE"; do
+            refs=()
+            for digest in "${digests[@]}"; do
+              [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+              refs+=("$image@sha256:$digest")
+            done
+            tags=(--tag "$image:$BUILD_TAG" --tag "$image:sha-$GITHUB_SHA")
+            # Rerunning an older commit must not roll latest back.
+            if [ "$main_sha" = "$GITHUB_SHA" ]; then
+              tags+=(--tag "$image:latest")
+            fi
+            docker buildx imagetools create "${tags[@]}" "${refs[@]}"
+            docker buildx imagetools inspect --raw "$image:$BUILD_TAG" | jq -e \
+              '[.manifests[].platform | select(.os == "linux") | .architecture] | sort == ["amd64", "arm64"]'
+            echo "Published $image:$BUILD_TAG (amd64 + arm64)" >> "$GITHUB_STEP_SUMMARY"
+          done
