@@ -120,6 +120,11 @@ class IMessageTransport:
             self.pending.pop(request_id, None)
         if "error" in response:
             code = response["error"].get("code")
+            detail = response["error"].get("data", {})
+            if isinstance(detail, dict) and "-1743" in str(detail.get("detail", "")):
+                raise RuntimeError(
+                    "Messages Automation permission denied: allow the supervising app to control Messages on the Mac"
+                )
             if code == -32002:
                 raise RuntimeError(
                     "Messages database unavailable: grant Full Disk Access to the supervising process on the Mac"

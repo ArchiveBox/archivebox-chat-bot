@@ -209,7 +209,12 @@ class TransportBot:
             await self.call("react", channel=message.channel, message_id=message.ts, status=status)
 
     async def post_text(self, message, text):
-        result = await self.call("send", channel=message.channel, thread=message.thread, text=text)
+        result = await self.call(
+            "send",
+            channel=message.channel,
+            thread=message.thread if self.capabilities.get("threads", True) else "",
+            text=text,
+        )
         message_id = result.get("id", "") if isinstance(result, dict) else str(result or "")
         if message_id:
             self.store.remember(

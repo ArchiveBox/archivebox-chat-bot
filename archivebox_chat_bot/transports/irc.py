@@ -19,7 +19,7 @@ class _Client(pydle.Client):
         super().__init__(*args, **kwargs)
 
     async def on_raw_cap_ls(self, params):
-        # pydle 1.1 treats the IRCv3 continuation marker as the capability list.
+        # pydle 1.x treats the IRCv3 continuation marker as the capability list.
         self.cap_lines.append(params[-1])
         if params[0] == "*":
             return
@@ -64,9 +64,11 @@ class _Client(pydle.Client):
                 event.set()
 
     async def on_raw_privmsg(self, message):
-        await super().on_raw_privmsg(message)
         nick, _ = self._parse_user(message.source)
-        if self.is_same_nick(nick, self.nickname):
+        if self.owner.closed or self.is_same_nick(nick, self.nickname):
+            return
+        await super().on_raw_privmsg(message)
+        if self.owner.closed:
             return
         target, body = message.params
         tags = getattr(message, "tags", {})
@@ -104,6 +106,7 @@ class IRCTransport:
         self.desired_channels = set(options.get("channels", []))
         self.joined = {}
         self.error = ""
+        self.closed = False
         self.client = _Client(
             self,
             options.get("nickname", "archivebox"),
@@ -132,7 +135,9 @@ class IRCTransport:
         if not self.client.connected or not self.client.registered or self.error:
             raise RuntimeError(self.error or "IRC is disconnected")
         return {
-            "id": self.options.get("sasl_username") or self.client.nickname,
+            "id": ("account:" + self.client.normalize(self.options["sasl_username"]))
+            if self.options.get("sasl_username")
+            else self.client.nickname,
             "name": self.client.nickname,
             "capabilities": {
                 "reactions": False,
@@ -178,5 +183,6 @@ class IRCTransport:
         return [{"id": channel, "name": channel} for channel in self.client.channels]
 
     async def close(self):
+        self.closed = True
         self.client.RECONNECT_ON_ERROR = False
         await self.client.disconnect(expected=True)
