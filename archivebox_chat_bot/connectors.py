@@ -280,8 +280,8 @@ class Adapters:
             for role in ("capture", "ai"):
                 if not getattr(connection, role).enabled:
                     continue
-                self.create(connection, role, settings)
                 if connection.platform in NODE_PLATFORMS:
+                    self.create(connection, role, settings)
                     accounts.append(
                         {
                             "id": f"{connection.id}:{role}",

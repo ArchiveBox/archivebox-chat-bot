@@ -2,57 +2,38 @@
 
 # 📚 ArchiveBox Chat Bot
 
-### Your team’s links, with a permanent home.
-
-**Share a link · Save a thread · Talk to your archive**
+**Save links. Archive conversations. Put your archive to work.**
 
 [![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE)
-![Slack + Zulip](https://img.shields.io/badge/Slack_%2B_Zulip-native-775586)
+[![MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE)
 ![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
 
-[Get connected](#-get-connected) · [What it does](#-quiet-by-default) · [AI assistant](#-meet-archiveboxai) · [Zulip](#-zulip-too) · [Development](#-development)
+**Slack · Zulip · Telegram · WhatsApp · IRC · iMessage · Messenger**
+
+[ArchiveBox Bot](#-archivebox-bot) · [ArchiveBox AI Bot](#-archivebox-ai-bot) · [Setup](#connect-your-apps)
 
 </div>
 
+## ↗ ArchiveBox Bot
+
 <table>
-  <tr>
-    <th width="33%">💬 Save a conversation</th>
-    <th width="33%">📥 DM your links</th>
-    <th width="33%">✧ Put your agent to work</th>
-  </tr>
-  <tr>
-    <td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Mention ArchiveBox in a research channel to save URLs from the preceding thread message"></a></td>
-    <td width="33%" valign="top"><a href="screenshots/slack-dm.jpg"><img src="screenshots/slack-dm.jpg" width="100%" alt="DM URLs to ArchiveBox and receive a check reaction after the real captures finish"></a></td>
-    <td width="33%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="ArchiveBox AI plans, captures, and verifies an HTTP caching reference archive in a real Slack DM conversation"></a></td>
-  </tr>
+<tr><th width="33%">💬 Mention in a thread</th><th width="33%">✉ Send a DM</th><th width="33%">▧ Browse saved snapshots</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Real Slack research thread: mention ArchiveBox to capture the URLs in the previous message"></a></td>
+<td width="33%" valign="top"><a href="screenshots/slack-dm.jpg"><img src="screenshots/slack-dm.jpg" width="100%" alt="Real Slack DM: capture web replay and Python reference URLs"></a></td>
+<td width="33%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip saved snapshot with uploaded screenshot and favicon"></a></td>
+</tr>
 </table>
 
-## ✨ Quiet by default
+- **@mention the bot** → archive URLs from the latest 10 messages and your mention.
+- **DM the bot** → archive the URLs you send.
+- **Post in New URLs** → archive every shared link.
+- **Open Saved URLs** → linked titles, original URLs, screenshots, 🌐, sizes, and personas.
+- **Enable a group** → automatically archive every link posted there.
+- **Choose permissions** → people, groups, commands, and bot preferences.
+- **Use several apps together** → one console, one Docker service, one ArchiveBox server.
 
-| You do this | ArchiveBox does this |
-|---|---|
-| Post text in **#new-urls** | Extract HTTP(S) URLs → create `Crawl.urls`, depth **0** → tag **slack + sender’s name** |
-| **@archivebox** in a thread | Read the **last 10 preceding human messages** + your mention → save their links |
-| **DM** links to the bot | Queue a capture immediately |
-| Wait for a snapshot to seal | Post **one saved card**: linked title, original URL, screenshot, favicon, database size, persona |
-| Ask **@archiveboxai** a question | Start a session in your existing ArchiveBox OpenCode instance |
-
-**🏃 Working → ✅ Saved / ❌ Needs attention**
-
-- 🤫 Capture mentions and DMs get **reactions only**.
-- ↔️ Saved cards and command replies use **one compact text line**; media links use **📷 / 🌐**.
-- 🎛️ Every feature is independently switchable.
-- 👤 User/channel allowlists, guest controls, trusted AI users, enabled commands.
-- 🔐 Private ArchiveBox? Images are fetched securely and uploaded to chat.
-- 💾 Durable inbox/outbox; duplicate delivery events do not create duplicate jobs.
-- 🧭 Original connection identity stays attached to pending work.
-
-## 🚀 Get connected
-
-![ArchiveBox connection console](screenshots/console.png)
-
-**Already running ArchiveBox?** Bring its **base URL + admin API key**, then connect Slack.
+### Connect your apps
 
 ```bash
 git clone https://github.com/ArchiveBox/archivebox-chat-bot.git
@@ -61,218 +42,133 @@ docker compose up -d --build
 docker compose exec archivebox-chat-bot cat /data/admin-password
 ```
 
-Open **[localhost:8001](http://localhost:8001)** → sign in with the generated password.
+**[Open setup → localhost:8001](http://localhost:8001)**
 
-| ① ArchiveBox | ② Slack | ③ Channels |
+1. **Connect ArchiveBox** — server URL + API key.
+2. **Choose a chat app** — connect its bot or pair its account.
+3. **Choose conversations** — New URLs, Saved URLs, and groups to archive.
+
+| App | Connect | Conversations |
 |---|---|---|
-| Enter **server URL + API key** | Click **Create preconfigured Slack app** | Click **Create / connect channels** |
-| Click **Test connection** | Choose your workspace → create → **Install → Allow** | Share your first link |
-| Pick an existing persona | Paste **bot token** + **app token** | Watch **#saved-urls** |
+| **Slack** | Preconfigured app → install → bot & app tokens | Channels, threads, DMs; creates New URLs / Saved URLs |
+| **Zulip** | Server URL + bot email + API key | Channels, topics, DMs; creates private New URLs / Saved URLs |
+| **Telegram** | BotFather token | Existing groups, topics, DMs; disable bot privacy for group-wide capture |
+| **WhatsApp** | Scan a Linked Devices QR code | Existing groups and DMs through Baileys |
+| **IRC** | Server + nickname; account login when required | Existing channels and private messages |
+| **iMessage** | Messages on a Mac with [imsg](https://github.com/openclaw/imsg) | Existing conversations; local Mac or SSH from Docker |
+| **Messenger** | Facebook Page credentials, or an existing [Matrix bridge](https://github.com/mautrix/meta) | Page conversations; personal groups through Matrix |
 
-**Slack token locations**
+> **Development in progress:** Slack and Zulip have real capture screenshots above. New-provider acceptance and screenshots are being added as their live workflows pass. iMessage needs a Mac; personal Messenger groups need a Matrix bridge.
 
-- `xoxb-…` → **OAuth & Permissions → Bot User OAuth Token**
-- `xapp-…` → **Basic Information → App-Level Tokens** → scope `connections:write`
-- Invite `@archivebox` into any additional channel where you want thread capture.
-- Socket Mode is the default: **no public webhook, tunnel, or inbound port**.
+### Groups & commands
 
-<details>
-<summary><b>Starting ArchiveBox alongside the bot</b></summary>
+- Invite **ArchiveBox Bot** into a group and send a message to discover it in the console.
+- Choose **Archive every link** for individual groups or all joined groups.
+- Select administrators by name in **Permissions** to let them change group settings from chat.
 
-```bash
-docker compose --profile archivebox up -d --build
-```
-
-- Open **[localhost:5797](http://localhost:5797)** and finish ArchiveBox setup.
-- Create an admin API token in ArchiveBox.
-- Console → server URL: **`http://archivebox:5797`**.
-- Console → public URL: **`http://localhost:5797`**, or the URL teammates use.
-- Uses the current ArchiveBox **`dev`** image and its authenticated API.
-
-</details>
-
-<details>
-<summary><b>Existing server / existing Compose project</b></summary>
-
-- Remote server: enter its normal HTTPS URL.
-- Server on the Docker host: use `http://host.docker.internal:5797` internally.
-- Same Compose network: use `http://archivebox:5797` internally.
-- **Public archive URL** controls links teammates click; Docker service names are not public links.
-- Separate ArchiveBox admin hostname? Standard `api.` / `web.` → `admin.` discovery is automatic; an internal admin override is available.
-- Copy the `archivebox-chat-bot` service into your Compose project, preserving its build path and `/data` volume.
-- Run **one bridge process** per data volume.
-
-</details>
-
-![Connection settings](screenshots/connections.png)
-
-## 🎛️ Make it yours
-
-| Setting | Default |
+| Command | Action |
 |---|---|
-| New URLs / Saved URLs / mentions / DMs | **On** |
-| Screenshot + favicon uploads | **On** |
-| Crawl depth | **0** |
-| Tags | **slack**, sender display name |
-| Persona | **Default** |
-| Capture plugins | Your ArchiveBox defaults |
-| Guest submissions | **Off** |
-| AI bot | **Off**; explicit trusted-user list required |
-| Maximum URLs per message | **50** |
-| Completion checks | **15 seconds** |
+| `/archivebox save <URLs>` | Capture links |
+| `/archivebox search <words>` | Find saved pages |
+| `/archivebox auto on` / `off` | Change this group’s automatic capture |
+| `/archivebox status` | Check ArchiveBox |
+| `/archivebox help` | Show commands |
 
-**Commands** — each can be disabled:
-
-```text
-/archivebox save https://example.com
-/archivebox search research notes
-/archivebox status
-/archivebox help
-```
-
-- Slack command replies are **private to the caller**.
-- Search matches visible URL/title/tag metadata; returns up to **10** results from at most **500** candidates.
-- Zulip: DM `help`, `status`, `search words`, or `save URLs`; the same commands work after a mention.
-- Each accepted human submission gets its own crawl; repeated URLs keep the new sender’s tags.
-- A green reaction means the crawl sealed with saved outputs for every submitted URL.
-- Missing optional screenshots/favicons are omitted from the saved card.
-- Saved cards include every newly sealed snapshot, including captures started outside Slack.
-
-## ✧ Meet @archiveboxai
-
-**A separate bot. Your existing agent.**
-
-1. Click **Create preconfigured AI app** in **Bot preferences**.
-2. Create/install the second Slack app; paste its bot + app tokens.
-3. Add trusted Slack user IDs → enable **ArchiveBox AI**.
-
-- Uses ArchiveBox’s existing **OpenCode providers, configuration, tools, and session database**.
-- Every DM or mention starts a **new, titled OpenCode session** in the collection directory.
-- Follow-ups include recent conversation context, including the AI bot's own replies.
-- Native Slack agent entry, suggested prompts, and session status.
-- Activity links open the corresponding session in ArchiveBox’s embedded OpenCode UI.
-- Native Stop events abort the corresponding OpenCode work.
-- Replies default to **one concise line**; longer answers only when requested.
-- **No second model-provider account or copied provider API key.**
-- Trusted AI users can exercise the configured agent’s tools and collection access; prompt preferences are not a sandbox.
-
-## 💬 Zulip, too
-
-Switch **Connections → Zulip**.
-
-- Enter **server URL, generic bot email, API key**.
-- Create/connect channels; newly created Zulip channels are **private**.
-- Topic mentions use the last 10 human messages from that topic.
-- Native DMs, reactions, uploaded previews, and an optional second AI bot.
-- Durable message cursors recover missed messages after reconnects and expired queues.
-
-![One-line saved card in Zulip](screenshots/zulip.jpg)
-
-**Native integration:** Zulip’s [Slack-compatible surface](https://zulip.com/integrations/slack_incoming) covers webhooks; this service uses Zulip’s own event and messaging APIs.
-
-## 🛠️ Operations
-
-| Task | Where |
-|---|---|
-| Change credentials, persona, channels | **Connections** |
-| Toggle features, permissions, commands | **Bot preferences** |
-| Change console password | **Bot preferences → Console password** |
-| Inspect captures, failures, sessions | **Activity** |
-| Preserve settings + pending work | Back up the **bridge_data** Docker volume |
-| Update | `git pull --ff-only && docker compose up -d --build` |
+- **Telegram:** `/save`, `/search`, `/auto`, `/status`, `/help` also work.
+- **Zulip:** DM a command or put it after a mention.
+- **IRC / iMessage:** `/archivebox …` in ordinary message text.
+- Captures use depth **0**, the selected persona, and tags for the **provider + sender**.
+- History comes from the provider where available; other providers retain the messages received while connected.
+- Reactions and media follow each provider’s capabilities. IRC and standard iMessage do not provide reliably targeted reactions; Messenger Pages have text replies.
 
 <details>
-<summary><b>Connection errors & recovery</b></summary>
+<summary><b>ArchiveBox & deployment options</b></summary>
 
-- **`missing_scope`** → reinstall the app using the current manifest.
-- **`not_in_channel`** → invite the relevant bot; private channels require an invitation.
-- **Thread history denied** → optionally add a user token with `channels:history` / `groups:history`.
-- **No saved cards** → check Saved URLs toggle, channel membership, ArchiveBox runner, and Activity.
-- **Uncertain job** → a connection interrupted a remote operation. Inspect the actual crawl/session/message before retrying; the bridge does not blindly replay it.
-- **Held job** → the server, workspace, bot identity, or destination changed. Restore the original connection before retrying.
-- **AI is silent** → enable it, add your user ID, verify the second bot, and configure OpenCode in ArchiveBox.
-- **Archived page link inaccessible** → correct the public URL and grant the teammate ArchiveBox access.
+- Start ArchiveBox alongside the bot: `docker compose --profile archivebox up -d --build`.
+- Docker network: `http://archivebox:5797`; server on host: `http://host.docker.internal:5797`.
+- Set **Public URL** to the ArchiveBox address people can open.
+- Standard split API/admin hostnames are discovered automatically; an internal admin override is available.
+- Slack Socket Mode and Telegram polling do not need a public webhook.
+- Facebook Pages, Telegram webhooks, and Slack OAuth need an HTTPS console URL.
+- Back up the **bridge_data** volume: settings, credentials, conversation history, and pending jobs.
+- Run one service per data volume. Update with `git pull --ff-only && docker compose up -d --build`.
 
 </details>
 
 <details>
-<summary><b>Credentials, privacy & uninstall</b></summary>
+<summary><b>Activity, credentials & recovery</b></summary>
 
-- The console is password protected; changes require an authenticated session and CSRF token.
-- Compose binds the console to **localhost**. Use HTTPS when exposing it through your reverse proxy.
-- Tokens live in the mounted SQLite database with owner-only permissions; protect and back up that volume.
-- The settings API never returns stored tokens. Blank secret fields preserve the saved value.
-- `ADMIN_PASSWORD` initializes a new volume only. Rotate an existing password in the console.
-- Stored job data includes relevant trigger text, URLs, sender/channel IDs, job results, and error status.
-- AI sends bounded conversation context to the providers already configured in your ArchiveBox instance.
-- Captured files remain in ArchiveBox; selected thumbnails are uploaded to Slack/Zulip.
-- Remove the Slack apps or Zulip bots to revoke chat access; stop the Compose service to disconnect.
-- Deleting the bridge volume removes its credentials and job history; it does **not** delete ArchiveBox captures or chat messages.
+- **Activity** links captures and agent sessions; uncertain remote operations require review before retrying.
+- Jobs remain bound to their original server, connection, and bot identity.
+- The console requires authentication and CSRF protection. Tokens are redacted from its API.
+- Blank password fields preserve credentials. Protect the Docker volume and use HTTPS when exposing the console.
+- Change the console password in **Activity → Console password**.
+- Revoke provider credentials or disconnect the account to remove chat access.
+- Removing the bot’s volume does not delete ArchiveBox snapshots or chat messages.
 
 </details>
 
-## 🌐 HTTPS OAuth & marketplace path
-
-| Install type | Transport | Status |
-|---|---|---|
-| Your own Slack app | Socket Mode | Supported |
-| Your own distributable app | Signed HTTPS Events API + OAuth | Implemented; requires your public endpoint and Slack client credentials |
-| AgentExchange / public Apps marketplace listing | Slack review | **Not submitted or approved** |
-
-**HTTPS setup**
-
-- Expose this console at an HTTPS URL; forward `Host` / `X-Forwarded-Proto`, and set `FORWARDED_ALLOW_IPS` to your proxy’s address.
-- Advanced Slack settings → public URL, signing secret, OAuth client ID + secret.
-- Download the **HTTPS manifest**, update the Slack app, disable Socket Mode.
-- Click **Connect Slack with OAuth**.
-- Separate callback/event routes exist for the capture and AI apps.
-- Each deployed bridge binds **one chat workspace to one ArchiveBox server**. A shared multi-tenant install broker is not included.
-
-**Before public submission**
-
-- [Slack requires 10+ active workspaces](https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/), including during review.
-- [Socket Mode apps cannot be listed](https://docs.slack.dev/apis/events-api/using-socket-mode/); use HTTPS events.
-- Prepare public support/privacy URLs, install/uninstall instructions, listing screenshots, and reviewer access.
-- Review the [Marketplace requirements](https://docs.slack.dev/slack-marketplace/slack-marketplace-app-guidelines-and-requirements/): unrestricted server-side agent execution may require a narrower reviewed offering. Eligibility is Slack’s decision.
-- Native agent UI support does **not** itself publish an AgentExchange listing.
-
-## 🧪 Development
+<details>
+<summary><b>Development & real-service checks</b></summary>
 
 ```bash
 uv sync
+cd connectors && npm ci && npm run build && cd ..
 uv run archivebox-chat-bot
-uv run pytest -xq
+uv run pytest -xq tests/local
 uv run ruff check .
-uv run ruff format --check .
 ```
 
-**Real-service acceptance** — requires disposable credentials and installed real capture plugins:
+- Python owns the shared capture/agent behavior, durable queue, permissions, and console.
+- [Chat SDK](https://chat-sdk.dev/docs) connects Telegram, WhatsApp, and Messenger in a supervised Node subprocess.
+- Native Slack/Zulip adapters preserve their thread, card, and agent features; IRC uses pydle; iMessage uses imsg.
+- Live tests use real services and persisted results. Credential schemas and environment variables are in `tests/test_*_live.py`.
+- Screenshots show actual conversations and captures; no simulated bot messages.
 
-```bash
-export ARCHIVEBOX_TEST_URL=http://127.0.0.1:18997
-export ARCHIVEBOX_TEST_TOKEN_FILE=/secure/path/archivebox-api-token
-uv run pytest -xq tests/test_archivebox_live.py
+</details>
 
-export SLACK_TEST_CREDENTIALS=/secure/path/slack-credentials.json
-export SLACK_TEST_DATA_DIR=/path/to/running/bridge-data
-uv run pytest -xq tests/test_slack_live.py
+## ✧ ArchiveBox AI Bot
 
-export ZULIP_TEST_CREDENTIALS=/secure/path/zulip-credentials.json
-uv run pytest -xq tests/test_zulip_live.py
-```
+<a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="640" alt="Real Slack AI task: plan an HTTP caching reference collection, capture missing pages, tag them, and verify saved files across multiple replies"></a>
 
-- Local checks launch a real HTTP service and use real SQLite files.
-- Live checks use actual ArchiveBox, Slack, Zulip, stored artifacts, and OpenCode responses.
-- Live credential-file schemas are defined by the test fixtures; no test credentials ship in this repository.
-- GitHub CI runs local tests, lint, Compose validation, and a Docker build.
-- Browser screenshots show the actual console and real test conversations.
+- **DM or @mention the AI bot** → research, capture, organize, and verify your archive.
+- **Follow up in the conversation** → include the recent messages and previous replies.
+- **Open ArchiveBox → Agent** → inspect each task’s persisted session and tool results.
+- **Use your existing OpenCode setup** → providers, credentials, tools, and session database.
+- **Choose trusted people** → control who can start agent tasks.
 
----
+### Connect the AI bot
 
-<div align="center">
+1. Open **ArchiveBox AI Bot** in the console.
+2. Choose a provider and connect its **second bot/account**.
+3. Select **Trusted people** and enable it.
 
-**Share something worth keeping.**
+| Provider | AI connection |
+|---|---|
+| **Slack** | Second preconfigured app; native agent interface, status, and Stop |
+| **Zulip** | Second bot email + API key |
+| **Telegram** | Second BotFather token |
+| **WhatsApp** | Second linked account |
+| **IRC** | Second nickname/account |
+| **iMessage** | Separate Mac/account for distinct bot identities |
+| **Messenger** | Second Page or Matrix account |
 
-[ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) · [Issues](https://github.com/ArchiveBox/archivebox-chat-bot/issues) · [MIT license](LICENSE)
+- Every invocation starts a titled session in the existing ArchiveBox collection directory.
+- **Agent preferences** customize the prompt; trusted users can exercise the configured agent’s tools.
+- AI replies and sessions stay separate from the ArchiveBox Bot’s capture workflow.
 
-</div>
+<details>
+<summary><b>Slack AgentExchange & Apps marketplace</b></summary>
+
+| Distribution | Status |
+|---|---|
+| Self-hosted Slack apps | Socket Mode supported |
+| HTTPS Events + OAuth | Implemented for your own public endpoint and Slack app |
+| Public AgentExchange / Apps listing | **Not submitted or approved** |
+
+- [Slack requires 10+ active workspaces during review](https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/).
+- [Marketplace apps require HTTPS events instead of Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode/).
+- Public submission also needs support/privacy URLs, reviewer access, and approval from Slack.
+- Native Slack agent support does not publish a marketplace listing automatically.
+
+</details>

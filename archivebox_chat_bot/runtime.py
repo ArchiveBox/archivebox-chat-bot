@@ -2,10 +2,14 @@
 
 import asyncio
 import contextlib
+import logging
 
 from .archivebox import ArchiveBox
 from .connectors import Adapters
 from .engine import Engine, safe_error
+
+
+log = logging.getLogger(__name__)
 
 
 class Runtime:
@@ -25,11 +29,13 @@ class Runtime:
             try:
                 self.connections["archivebox"] = await asyncio.wait_for(self.archive.check(), timeout=8)
             except Exception as exc:
+                log.exception("ArchiveBox connection failed")
                 self.connections["archivebox"] = {"ok": False, "error": safe_error(exc)}
         self.adapters = Adapters(self.store)
         try:
             await self.adapters.configure(settings)
         except Exception as exc:
+            log.exception("Connector initialization failed")
             self.error = safe_error(exc)
         for connection in settings.connections:
             if connection.enabled:

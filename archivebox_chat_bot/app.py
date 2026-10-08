@@ -173,8 +173,6 @@ def create_app(directory=None):
             raise HTTPException(
                 422, [{"field": ".".join(map(str, e["loc"])), "message": e["msg"]} for e in exc.errors()]
             ) from exc
-        if any(c.ai.enabled and not c.ai_allowed_users for c in settings.connections):
-            raise HTTPException(422, "Select at least one trusted person before enabling ArchiveBox AI Bot")
         store.save_settings(settings)
         await engine.restart()
         return {"ok": True, "settings": store.public_settings()}
