@@ -31,11 +31,16 @@ class BeeperTransport:
         if not self.network_account:
             raise ValueError("Select a connected Beeper account for this bot role")
         self.chat_ids = frozenset(options.get("chat_ids") or [])
+        # The setting exists only on the capture-role account. Keep an AI
+        # account's own-message exclusion even if stale config contains it.
+        self.include_own_messages = bool(options.get("include_own_messages")) and account_id.rsplit(":", 1)[-1] == "capture"
         headers = {"Authorization": "Bearer " + options["access_token"]} if options.get("access_token") else {}
         self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=30, follow_redirects=False)
         scope = hashlib.sha256(json.dumps([self.base_url, self.network_account]).encode()).hexdigest()[:24]
         self.path = Path(data_dir) / f"beeper-{scope}.json"
         self.state = json.loads(self.path.read_text()) if self.path.exists() else {"cursors": {}}
+        if not isinstance(self.state.get("outbound_message_ids"), dict):
+            self.state["outbound_message_ids"] = {}
         self.identity = None
         self.error = ""
         self.task = None
@@ -150,7 +155,7 @@ class BeeperTransport:
         chat = await self._chat(channel, selected=False)
         return {"id": chat["id"], "name": chat["title"], "is_dm": chat["type"] == "single"}
 
-    def _message(self, message, chat):
+    def _message(self, message, chat, *, own_message=False):
         if message.get("accountID") != self.network_account or message.get("chatID") != chat["id"]:
             raise RuntimeError("Beeper message did not match the selected account and chat")
         participants = {p["id"]: p for p in chat.get("participants", {}).get("items", [])}
@@ -209,7 +214,7 @@ class BeeperTransport:
             "thread": "",
             "is_dm": chat["type"] == "single",
             "is_mention": self.identity["user"]["id"] in mentions or "@room" in mentions,
-            "is_bot": bool(sender.get("isNetworkBot") or message.get("isSender")),
+            "is_bot": bool(sender.get("isNetworkBot") or (message.get("isSender") and not own_message)),
         }
 
     async def start(self):
@@ -227,7 +232,15 @@ class BeeperTransport:
         self.task = asyncio.create_task(self._run())
 
     async def _reconcile(self):
+        # Serialize cursor reads with sends so a just-sent outbound ID is
+        # durably recorded before reconciliation can observe that message.
+        async with self.send_lock:
+            await self._reconcile_locked()
+
+    async def _reconcile_locked(self):
+        outbound_by_chat = self.state["outbound_message_ids"]
         for channel in sorted(self.chat_ids):
+            outbound = set(outbound_by_chat.get(channel, []))
             chat = await self._chat(channel)
             since = datetime.fromisoformat(self.state["selected"][channel])
             cursor = self.state["cursors"].get(channel)
@@ -251,19 +264,31 @@ class BeeperTransport:
                 params = {"cursor": next_cursor, "direction": "after" if cursor else "before"}
             # Fresh chats page backwards; existing chats catch up forwards from their durable cursor.
             messages = {m["id"]: m for p in pages for m in p["items"]}
+            observed_outbound = set()
             for message in sorted(messages.values(), key=lambda m: (m["timestamp"], m["sortKey"])):
                 if datetime.fromisoformat(message["timestamp"]) < since:
                     continue
-                if message.get("isSender") or message["senderID"] == self.identity["user"]["id"]:
+                if message["id"] in outbound:
+                    observed_outbound.add(message["id"])
+                    continue
+                own_message = bool(message.get("isSender") or message["senderID"] == self.identity["user"]["id"])
+                if own_message and not self.include_own_messages:
                     continue
                 if message.get("isHidden") or message.get("isDeleted") or message.get("type") in {"REACTION", "NOTICE"}:
                     continue
-                await self.emit(self._message(message, chat))
+                await self.emit(self._message(message, chat, own_message=own_message))
             if cursor:
                 newest = next((p["newestCursor"] for p in reversed(pages) if p.get("newestCursor")), cursor)
             if newest:
                 self.state["cursors"][channel] = newest
-                self._save()  # No open transaction/network overlap; advance only after core acceptance.
+            if observed_outbound:
+                remaining = sorted(outbound - observed_outbound)
+                if remaining:
+                    outbound_by_chat[channel] = remaining
+                else:
+                    outbound_by_chat.pop(channel, None)
+            if newest or observed_outbound:
+                self._save()  # Advance only after core acceptance and outbound suppression.
 
     async def _run(self):
         try:
@@ -377,7 +402,12 @@ class BeeperTransport:
                 for payload in payloads:
                     if thread:
                         payload["replyToMessageID"] = thread
-                    sent.append(await self._confirmed_send(channel, payload))
+                    message_id = await self._confirmed_send(channel, payload)
+                    sent.append(message_id)
+                    outbound = self.state["outbound_message_ids"].setdefault(channel, [])
+                    if message_id not in outbound:
+                        outbound.append(message_id)
+                    self._save()
             except Exception:
                 if sent:
                     raise RuntimeError("Beeper message partially delivered; inspect the chat before retrying") from None

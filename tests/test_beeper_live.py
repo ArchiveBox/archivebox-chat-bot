@@ -114,7 +114,7 @@ async def test_real_send_confirms_upstream_success(tmp_path):
     options = credentials()
     channel = options["chat_ids"][0]
     events = asyncio.Queue()
-    transport = BeeperTransport(options, "acceptance", tmp_path, events.put)
+    transport = BeeperTransport({**options, "include_own_messages": True}, "acceptance:capture", tmp_path, events.put)
     try:
         await transport.start()
         text = "ArchiveBox Beeper delivery acceptance " + uuid.uuid4().hex

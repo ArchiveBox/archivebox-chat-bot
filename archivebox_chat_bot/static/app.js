@@ -775,6 +775,8 @@ function renderEditor() {
     return;
   }
   if (role === "capture") {
+    if (editing.platform === "beeper")
+      field(permissions, ["include_own_messages", "Archive my own messages", "checkbox"], editing.capture.options);
     for (const [key, title] of [
       ["enable_mentions", "Save links when mentioned"],
       ["enable_dms", "Save links in DMs"],
