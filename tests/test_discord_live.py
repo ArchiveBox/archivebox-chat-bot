@@ -13,6 +13,7 @@ and DM plus at least one AI case. Enable screenshot previews before capturing.
 These tests never send messages, open another Gateway, or change configuration.
 """
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -23,6 +24,7 @@ import pytest
 
 from archivebox_chat_bot.archivebox import ArchiveBox
 from archivebox_chat_bot.config import Settings
+from archivebox_chat_bot.media import normalize_image
 from archivebox_chat_bot.text import size_label
 
 
@@ -83,6 +85,12 @@ async def test_real_discord_identity_installation_and_commands(credentials):
     assert {row["name"] for row in command["options"]} == {"save", "search", "auto", "status", "help"}
 
 
+def test_required_human_flows_are_recorded(credentials):
+    cases = credentials["cases"]
+    assert {case["kind"] for case in cases if case["role"] == "capture"} >= {"mention", "dm"}
+    assert any(case["role"] == "ai" for case in cases)
+
+
 async def test_real_discord_human_capture_cards_and_ai(credentials, runtime):
     settings, jobs = runtime
     connection = next(c for c in settings.connections if c.id == credentials["connection_id"])
@@ -90,8 +98,7 @@ async def test_real_discord_human_capture_cards_and_ai(credentials, runtime):
     assert connection.options["guild_id"] == credentials["guild_id"]
     assert connection.upload_images and connection.saved_channel
     cases = credentials["cases"]
-    assert {case["kind"] for case in cases if case["role"] == "capture"} >= {"mention", "dm"}
-    assert any(case["role"] == "ai" for case in cases)
+    assert cases, "Record actual human triggers before verifying their results"
     archive = ArchiveBox(settings)
     try:
         for case in cases:
@@ -123,12 +130,25 @@ async def test_real_discord_human_capture_cards_and_ai(credentials, runtime):
             result = job["result"]
             if role == "ai":
                 assert result["session"]["id"] and result["answer"]
+                assert await archive.session_answer(result["session"]) == result["answer"]
                 answer = await discord_api(
                     credential, f"/channels/{case['channel_id']}/messages/{result['message_id']}"
                 )
                 assert answer["author"]["id"] == credential["id"]
                 final_offset = ((len(result["answer"]) - 1) // 2000) * 2000
                 assert answer["content"] == result["answer"][final_offset:]
+                if case.get("urls"):
+                    crawl = await archive.crawl(case["crawl_id"])
+                    assert crawl["status"] == "sealed"
+                    snapshots = await archive.crawl_snapshots(case["crawl_id"])
+                    assert {snapshot["url"] for snapshot in snapshots} == set(case["urls"])
+                    for snapshot in snapshots:
+                        assert snapshot["status"] == "sealed"
+                        assert set(snapshot["tags"]) == set(case["expected_tags"])
+                        assert snapshot["output_size"] > 0
+                        for kind in ("screenshot", "favicon"):
+                            artifact = await archive.artifact(snapshot, kind)
+                            assert artifact and artifact.data
                 continue
             assert set(result["urls"]) == set(case["urls"])
             assert set(result["tags"]) == set(case["expected_tags"])
@@ -139,7 +159,8 @@ async def test_real_discord_human_capture_cards_and_ai(credentials, runtime):
             for snapshot in snapshots:
                 assert snapshot["status"] == "sealed"
                 assert set(case["expected_tags"]) == set(snapshot["tags"])
-                assert await archive.artifact(snapshot, "screenshot"), "Capture must save an actual screenshot"
+                screenshot = await archive.artifact(snapshot, "screenshot")
+                assert screenshot, "Capture must save an actual screenshot"
                 announcements = [
                     row
                     for row in jobs
@@ -161,6 +182,13 @@ async def test_real_discord_human_capture_cards_and_ai(credentials, runtime):
                 assert archive.detail_url(snapshot) in embed["description"]
                 assert "Saved " + size_label(snapshot["output_size"]) in embed["description"]
                 assert embed["thumbnail"]["width"] > 0 and embed["thumbnail"]["height"] > 0
-                assert any(item["filename"] == "screenshot.png" and item["size"] > 0 for item in card["attachments"])
+                # Discord hides attachments used inside an embed from the attachment list.
+                # Verify the actual public image is exactly the preview we uploaded.
+                async with httpx.AsyncClient(timeout=30) as client:
+                    thumbnail = await client.get(embed["thumbnail"]["url"])
+                assert thumbnail.status_code == 200
+                assert thumbnail.headers["content-type"].startswith("image/png")
+                expected = normalize_image(screenshot.data, "screenshot")
+                assert hashlib.sha256(thumbnail.content).digest() == hashlib.sha256(expected).digest()
     finally:
         await archive.close()

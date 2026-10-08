@@ -14,7 +14,7 @@
 
 <a id="archivebox-bot"></a>
 
-## 🏛️ `@ArchiveBox` Bot
+## 🏛️ ArchiveBox Bot
 
 - **mention @ArchiveBox in any thread** → saves all URLs found in the last 10 messages
 - **DM @ArchiveBox bot with any text** → archives every URL in your DM
@@ -126,6 +126,14 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 </details>
 
 [Official setup](https://docs.discord.com/developers/quick-start/getting-started) · [Message Content Intent](https://support-dev.discord.com/hc/en-us/articles/6207308062871-What-are-Privileged-Intents)
+
+<table>
+<tr><th width="50%">4 · Choose channels & preferences</th><th width="50%">5 · Browse Saved URLs</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/discord-capture-connected.jpg"><img src="screenshots/discord-capture-connected.jpg" width="100%" alt="Connected Discord capture bot with New URLs and Saved URLs destinations selected"></a></td>
+<td width="50%" valign="top"><a href="screenshots/discord-capture-saved.jpg"><img src="screenshots/discord-capture-saved.jpg" width="100%" alt="Real Discord snapshot card after a channel mention, including screenshot, Saved size, persona, and favicon link"></a></td>
+</tr>
+</table>
 
 ---
 
@@ -374,7 +382,7 @@ uv run ruff check .
 
 <a id="archivebox-ai-bot"></a>
 
-## 🧠 `@ArchiveBoxAI` Bot
+## 🧠 ArchiveBox AI Bot
 
 - **DM / @mention** → research, capture, tag, organize, and verify.
 - **Follow up** → include recent messages and previous replies.
@@ -415,6 +423,15 @@ uv run ruff check .
 - **Connect:** create a second Discord app named **ArchiveBox AI Bot** → repeat the [Discord setup](#discord) → choose **Trusted people**.
 - **DM / mention:** research, capture, tag, and verify with your existing ArchiveBox agent; follow up in the same DM or thread.
 - **ArchiveBox → Agent:** open the session and its tool results.
+
+<details>
+<summary><b>Choose who can use ArchiveBox AI Bot</b></summary>
+
+<a href="screenshots/discord-ai-connected.jpg"><img src="screenshots/discord-ai-connected.jpg" width="900" alt="Connected Discord AI bot with Nick Sweeting selected under Trusted people"></a>
+
+</details>
+
+<a href="screenshots/discord-ai-task.jpg"><img src="screenshots/discord-ai-task.jpg" width="100%" alt="Real Discord AI task capturing two Python concurrency references, tagging and checking saved files, then verifying them in a thread followup"></a>
 
 ---
 
