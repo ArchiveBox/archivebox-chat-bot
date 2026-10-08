@@ -8,13 +8,19 @@ from pathlib import Path
 import pytest
 
 from archivebox_chat_bot.archivebox import ArchiveBox
-from archivebox_chat_bot.config import Settings
+from archivebox_chat_bot.config import Account, Connection, Settings
 from archivebox_chat_bot.slack import Slack
 
 
 async def test_real_bot_authentication():
     credentials = json.loads(Path(os.environ["SLACK_TEST_CREDENTIALS"]).read_text())["slack"]
-    client = Slack(Settings(slack_bot_token=credentials["bot_token"]))
+    client = Slack(
+        Connection(
+            id="default",
+            platform="slack",
+            capture=Account(enabled=True, options={"bot_token": credentials["bot_token"]}),
+        )
+    )
     try:
         result = await client.check()
         assert result["team_id"] == credentials["team_id"]
@@ -43,7 +49,21 @@ async def live():
     for job in jobs:
         for field in ("payload", "result"):
             job[field] = json.loads(job[field])
-    capture, ai, archive = Slack(settings), Slack(settings, "ai"), ArchiveBox(settings)
+    capture_connection = next(
+        c
+        for c in settings.connections
+        if c.platform == "slack"
+        and c.capture.enabled
+        and c.account_options("capture").get("bot_token") == credentials["slack"]["bot_token"]
+    )
+    ai_connection = next(
+        c
+        for c in settings.connections
+        if c.platform == "slack"
+        and c.ai.enabled
+        and c.account_options("ai").get("bot_token") == credentials["slack_ai"]["bot_token"]
+    )
+    capture, ai, archive = Slack(capture_connection), Slack(ai_connection, "ai"), ArchiveBox(settings)
     await capture.check()
     await ai.check()
     try:
@@ -103,21 +123,12 @@ async def test_real_ai_replies_and_cancelled_session(live):
         assert job["state"] == "done"
         session = job["result"]["session"]
         session_ids.append(session["id"])
-        messages = await archive._agent_request(
-            "GET", f"session/{session['id']}/message", params={"directory": session["directory"]}
-        )
-        answer = "\n".join(
-            part["text"]
-            for message in messages
-            if message["info"]["role"] == "assistant"
-            for part in message["parts"]
-            if part["type"] == "text"
-        )
+        answer = await archive.session_answer(session)
+        assert answer is not None and answer == job["result"]["answer"]
         reader = ai.client if kind == "dm" else ai.history
         thread = (await reader.conversations_replies(channel=evidence[f"{kind}_channel"], ts=ts))["messages"]
         replies = [message for message in thread if message.get("user") == ai.identity["user_id"]]
         assert len(replies) == 1 and replies[0]["text"] == answer
-        assert "\n" not in answer
     assert len(set(session_ids)) == 2
     stopped_ts = evidence.get("stop_fixed_ts", evidence["stop_ts"])
     stopped = trigger_job(jobs, stopped_ts)

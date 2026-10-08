@@ -40,7 +40,6 @@ class Engine:
         self.loop = None
         self.error = ""
         self.connections = {}
-        self.lock = asyncio.Lock()
 
     def scope(self, role="capture"):
         identity = getattr(self.bots.get(role), "identity", {})

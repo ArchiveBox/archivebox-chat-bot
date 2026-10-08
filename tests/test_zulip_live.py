@@ -21,7 +21,8 @@ import pytest
 from PIL import Image
 
 from archivebox_chat_bot.archivebox import ArchiveBox
-from archivebox_chat_bot.config import Settings
+from archivebox_chat_bot.config import Account, Connection, Settings
+from archivebox_chat_bot.connectors import Adapters
 from archivebox_chat_bot.engine import Engine
 from archivebox_chat_bot.store import Store
 from archivebox_chat_bot.text import size_label
@@ -43,14 +44,17 @@ def credentials():
 def settings_for(credentials):
     capture, ai, channels = credentials["zulip"], credentials["zulip_ai"], credentials["zulip_test"]
     return Settings(
-        platform="zulip",
-        zulip_url=capture["site"],
-        zulip_email=capture["email"],
-        zulip_api_key=capture["api_key"],
-        zulip_ai_email=ai["email"],
-        zulip_ai_api_key=ai["api_key"],
-        new_channel=str(channels["new_channel"]),
-        saved_channel=str(channels["saved_channel"]),
+        connections=[
+            Connection(
+                id="default",
+                platform="zulip",
+                options={"url": capture["site"]},
+                capture=Account(enabled=True, options={"email": capture["email"], "api_key": capture["api_key"]}),
+                ai=Account(enabled=True, options={"email": ai["email"], "api_key": ai["api_key"]}),
+                new_channel=str(channels["new_channel"]),
+                saved_channel=str(channels["saved_channel"]),
+            )
+        ],
         archivebox_url=os.environ.get("ARCHIVEBOX_TEST_URL", "http://127.0.0.1:18997"),
         archivebox_public_url=os.environ.get("ARCHIVEBOX_TEST_URL", "http://127.0.0.1:18997"),
     )
@@ -80,7 +84,7 @@ async def private_channels(bot):
 async def test_real_bot_identities_and_private_setup(credentials):
     settings = settings_for(credentials)
     for role, credential in (("capture", "zulip"), ("ai", "zulip_ai")):
-        bot = Zulip(settings, role)
+        bot = Zulip(settings.connections[0], role)
         try:
             await private_channels(bot)
             identity = await bot.check()
@@ -98,8 +102,8 @@ async def replayed(credentials, tmp_path):
     settings = settings_for(credentials)
     triggers = credentials["zulip_test"]
     store = Store(tmp_path / "zulip-inbox")
-    bot = Zulip(settings, store=store)
-    cursor_key = f"zulip:{settings.zulip_url}:{credentials['zulip']['user_id']}:message_cursor"
+    bot = Zulip(settings.connections[0], store=store)
+    cursor_key = f"zulip:{settings.connections[0].options['url']}:{credentials['zulip']['user_id']}:message_cursor"
     store.set_meta(cursor_key, min(int(triggers["stream_trigger_id"]), int(triggers["dm_trigger_id"])) - 1)
     messages = {}
 
@@ -125,7 +129,7 @@ async def replayed(credentials, tmp_path):
         cursor = int(store.meta(cursor_key))
         assert cursor >= max(int(triggers["stream_trigger_id"]), int(triggers["dm_trigger_id"]))
         await bot.close()
-        bot = Zulip(settings, store=store)
+        bot = Zulip(settings.connections[0], store=store)
         messages.clear()
         await bot.start(receive)
         assert str(triggers["stream_trigger_id"]) not in messages
@@ -173,7 +177,7 @@ async def test_real_human_context_reactions_and_replies(replayed):
 async def test_real_archive_card_and_native_uploaded_images(credentials):
     settings = settings_for(credentials)
     settings.archivebox_token = Path(os.environ["ARCHIVEBOX_TEST_TOKEN_FILE"]).read_text().strip()
-    archive, bot = ArchiveBox(settings), Zulip(settings)
+    archive, bot = ArchiveBox(settings), Zulip(settings.connections[0])
     try:
         await private_channels(bot)
         identity = await bot.check()
@@ -193,7 +197,7 @@ async def test_real_archive_card_and_native_uploaded_images(credentials):
         detail_url = archive.detail_url(snapshot)
         card_id = await bot.post_card(snapshot, detail_url, media, f"zulip-live:{snapshot['id']}")
         card = await get_message(bot, card_id)
-        assert str(card["stream_id"]) == settings.saved_channel
+        assert str(card["stream_id"]) == settings.connections[0].saved_channel
         assert str(card["sender_id"]) == identity["bot_id"]
         assert snapshot["url"] in card["content"] and detail_url in card["content"]
         assert size_label(snapshot["output_size"]) in card["content"]
@@ -205,11 +209,12 @@ async def test_real_archive_card_and_native_uploaded_images(credentials):
         }
         assert set(uploaded) == {"screenshot", "favicon"}
         async with httpx.AsyncClient(
-            auth=(settings.zulip_email, settings.zulip_api_key), follow_redirects=True
+            auth=(settings.connections[0].capture.options["email"], settings.connections[0].capture.options["api_key"]),
+            follow_redirects=True,
         ) as client:
             for kind, path in uploaded.items():
                 assert path.startswith("/user_uploads/")
-                response = await client.get(settings.zulip_url + path)
+                response = await client.get(settings.connections[0].options["url"] + path)
                 response.raise_for_status()
                 assert response.content.startswith(b"\x89PNG\r\n\x1a\n")
                 with Image.open(io.BytesIO(response.content)) as image:
@@ -235,7 +240,7 @@ async def test_real_archive_card_and_native_uploaded_images(credentials):
 async def test_real_deleted_queue_recovers_without_replaying_delivered_messages(credentials, tmp_path):
     settings = settings_for(credentials)
     store = Store(tmp_path / "zulip-queue-recovery")
-    bot = Zulip(settings, store=store)
+    bot = Zulip(settings.connections[0], store=store)
     seen = []
 
     async def receive(message):
@@ -262,14 +267,15 @@ async def test_real_deleted_queue_recovers_without_replaying_delivered_messages(
 async def test_real_native_commands_and_disabled_command_filter(credentials, tmp_path):
     ids = credentials["zulip_commands_test"]
     settings = settings_for(credentials)
-    settings.commands = ["help", "status", "save"]
-    settings.enable_dms = settings.enable_mentions = settings.enable_new_urls = False
+    connection = settings.connections[0]
+    connection.commands = ["help", "status", "save"]
+    connection.enable_dms = connection.enable_mentions = connection.enable_new_urls = False
     store = Store(tmp_path / "zulip-native-commands")
     store.save_settings(settings)
-    engine = Engine(store)
-    bot = Zulip(settings, store=store)
+    engine = Engine(store, settings, settings.connections[0], Adapters(store))
+    bot = Zulip(settings.connections[0], store=store)
     engine.bots["capture"] = bot
-    cursor_key = f"zulip:{settings.zulip_url}:{credentials['zulip']['user_id']}:message_cursor"
+    cursor_key = f"zulip:{settings.connections[0].options['url']}:{credentials['zulip']['user_id']}:message_cursor"
     store.set_meta(cursor_key, min(int(ids[f"{command}_id"]) for command in ("help", "status", "search", "save")) - 1)
     messages = {}
 
