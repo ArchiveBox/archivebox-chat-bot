@@ -55,7 +55,7 @@ def create_app(directory=None):
         await engine.close()
         store.close()
 
-    app = FastAPI(title="ArchiveBox Chat Bot", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = FastAPI(title="Chatbot Admin Console", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.store, app.state.engine = store, engine
 
     @app.middleware("http")
@@ -75,7 +75,7 @@ def create_app(directory=None):
     def verify_origin(request):
         origin = request.headers.get("origin", "")
         if origin and origin != str(request.base_url).rstrip("/"):
-            raise HTTPException(403, "Origin does not match this setup console")
+            raise HTTPException(403, "Origin does not match this Chatbot Admin Console")
 
     def signed_in(request):
         key, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
@@ -91,7 +91,7 @@ def create_app(directory=None):
         session = sessions.get(key)
         if not session or session["expires"] < time.time():
             sessions.pop(key, None)
-            raise HTTPException(401, "Sign in to the setup console")
+            raise HTTPException(401, "Sign in to the Chatbot Admin Console")
         if request.method not in ("GET", "HEAD"):
             verify_origin(request)
             if not secrets.compare_digest(request.headers.get("x-csrf-token", ""), session["csrf"]):

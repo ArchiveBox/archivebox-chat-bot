@@ -474,7 +474,7 @@ function renderSetupGuide() {
         toast("Callback URL copied");
       }));
       if (!base.startsWith("https://"))
-        content.append(el("p", "Set the console's public HTTPS URL in Connections before registering this callback.", "guide-warning"));
+        content.append(el("p", "Set the Chatbot Admin Console's public HTTPS URL in Connections before registering this callback.", "guide-warning"));
     }
     const docs = el("div", undefined, "guide-docs");
     for (const [title, url] of step.docs || []) {
@@ -938,9 +938,9 @@ openTab(
 async function showLogin() {
   firstRun = (await api("/auth/setup")).required;
   $("#login-description").textContent = firstRun
-    ? "Choose a password for your bot console."
+    ? "Choose a password for your Chatbot Admin Console."
     : "Sign in to connect your bots.";
-  $("#login-submit").textContent = firstRun ? "Create password & continue →" : "Open console →";
+  $("#login-submit").textContent = firstRun ? "Create password & continue →" : "Open Chatbot Admin Console →";
   $("#password").autocomplete = firstRun ? "new-password" : "current-password";
   $("#password").minLength = firstRun ? 12 : 1;
   $("#password").placeholder = firstRun ? "At least 12 characters" : "";

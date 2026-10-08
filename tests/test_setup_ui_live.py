@@ -1,4 +1,4 @@
-"""Read-only browser checks against the running, configured setup console.
+"""Read-only browser checks against the running, configured Chatbot Admin Console.
 
 CHAT_SETUP_URL=http://127.0.0.1:18996 CHAT_SETUP_PASSWORD_FILE=/path/to/admin-password \
     uv run python -m pytest -xq tests/test_setup_ui_live.py
@@ -18,7 +18,7 @@ def test_saved_provider_options_are_visible_in_editor():
         page = browser.new_page()
         page.goto(url)
         page.locator("#password").fill(password)
-        page.get_by_role("button", name="Open console").click()
+        page.get_by_role("button", name="Open Chatbot Admin Console").click()
         expect(page.locator("#console")).to_be_visible()
         response = page.request.get(url + "/api/state")
         assert response.ok
@@ -49,7 +49,7 @@ def test_provider_guides_load_real_images_and_change_with_transport():
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(url)
         page.locator("#password").fill(password)
-        page.get_by_role("button", name="Open console").click()
+        page.get_by_role("button", name="Open Chatbot Admin Console").click()
         expect(page.locator("#console")).to_be_visible()
         page.locator('.nav[data-tab="connections"]').click()
         for provider in ("Slack", "Zulip", "Telegram", "WhatsApp", "IRC", "iMessage", "Messenger", "Beeper"):

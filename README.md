@@ -32,16 +32,16 @@ cd archivebox-chat-bot
 docker compose up -d --build
 ```
 
-1. **[Open setup](http://localhost:5798)** → choose your console password → ArchiveBox server URL + API key.
+1. **[Open Chatbot Admin Console](http://localhost:5798)** → choose your password → ArchiveBox server URL + API key.
 2. **Choose a provider below** → connect ArchiveBox Bot.
 3. **Pick conversations** → New URLs, Saved URLs, groups, permissions.
 
 - **Data:** `./archivebox-chat-bot/` · [docker-compose.yml](docker-compose.yml).
 - **Optional password preset:** uncomment `ADMIN_PASSWORD` to skip the first-run screen.
 
-<a href="screenshots/first-run.jpg"><img src="screenshots/first-run.jpg" width="320" alt="First-run console password setup"></a>
+<a href="screenshots/first-run.jpg"><img src="screenshots/first-run.jpg" width="320" alt="First-run Chatbot Admin Console password setup"></a>
 
-<a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Actual shared setup console with connected providers and a nonblocking localhost warning"></a>
+<a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Chatbot Admin Console with connected providers and a nonblocking localhost warning"></a>
 
 - **Reachable links:** [Tailscale](https://tailscale.com/kb/1153/enabling-https) for personal use; a domain + HTTPS for internet access.
 - **Localhost / 127.0.0.1:** allowed with a warning; set **Public URL** so links work on other devices.
@@ -56,7 +56,7 @@ docker compose up -d --build
 
 #### Slack
 
-- **Connect:** choose **Create Slack app** in the console → install the preconfigured app → follow the two screenshot guides to paste your **Bot token** (`xoxb-…`) and **App token** (`xapp-…`) → **Save & connect**.
+- **Connect:** choose **Create Slack app** in the Chatbot Admin Console → install the preconfigured app → follow the two screenshot guides to paste your **Bot token** (`xoxb-…`) and **App token** (`xapp-…`) → **Save & connect**.
 - **Use:** invite the bot to channels; mention it in a thread or send a DM.
 - **Destinations:** **Save & connect** creates **New URLs + Saved URLs** automatically. Socket Mode needs no public webhook.
 
@@ -171,7 +171,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <table>
 <tr><th width="50%">1 · Configure the bot</th><th width="50%">2 · Browse Saved URLs</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/irc-config.png"><img src="screenshots/irc-config.png" width="100%" alt="Actual IRC bot connection preferences in the shared console"></a></td>
+<td width="50%" valign="top"><a href="screenshots/irc-config.png"><img src="screenshots/irc-config.png" width="100%" alt="Actual IRC bot connection preferences in the Chatbot Admin Console"></a></td>
 <td width="50%" valign="top"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC channel with archived Python asyncio references"></a></td>
 </tr>
 </table>
@@ -221,7 +221,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <details>
 <summary><b>Meta webhook</b></summary>
 
-- Register `https://<console>/connections/<connection-id>/capture/webhook` with your matching verify token.
+- Register `https://<chatbot-host>/connections/<connection-id>/capture/webhook` with your matching verify token.
 - Subscribe the Page to message events; use `/ai/webhook` for ArchiveBox AI Bot.
 
 </details>
@@ -255,7 +255,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 ### Groups & commands
 
-- Invite the bot → send a message → select the group in the console.
+- Invite the bot → send a message → select the group in the Chatbot Admin Console.
 - Enable **Archive every link** per group or across joined groups; choose administrators under **Permissions**.
 
 | Command | Action |
@@ -292,7 +292,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <details>
 <summary><b>Credentials & recovery</b></summary>
 
-- **Activity** → jobs, sessions, **Recover answer**, console password.
+- **Activity** → jobs, sessions, **Recover answer**, Chatbot Admin Console password.
 - Queued jobs retain their original server/connection; review uncertain delivery before retrying.
 - Blank credential fields preserve secrets. Protect the data directory; use HTTPS for remote access.
 - Revoke credentials to remove access. Removing bot data preserves snapshots and chat messages.
@@ -310,7 +310,7 @@ uv run python -m pytest -xq tests/local
 uv run ruff check .
 ```
 
-- Python: shared capture/agent engine, queue, permissions, console.
+- Python: shared capture/agent engine, queue, permissions, Chatbot Admin Console.
 - Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
 - Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers. Provider logos are official website assets; IRC uses the Libera.Chat network logo, and the bundled Messenger logo comes from [Messenger](https://www.messenger.com/).
 
@@ -327,7 +327,7 @@ uv run ruff check .
 
 ### Connect the AI bot
 
-1. **ArchiveBox AI Bot** in the console → connect a second bot/account.
+1. **ArchiveBox AI Bot** in the Chatbot Admin Console → connect a second bot/account.
 2. **Trusted people** → choose who can run tasks.
 3. **Agent preferences** → optional prompt → enable.
 

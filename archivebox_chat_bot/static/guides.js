@@ -166,7 +166,7 @@ const setupGuides = {
     },
     {
       title: "Connect the message webhook",
-      text: "Use your console's public HTTPS address for the callback below. Choose a verify token and enter the same value here and in Meta. Save here, then verify in Meta and subscribe the Page to message events.",
+      text: "Use your Chatbot Admin Console's public HTTPS address for the callback below. Choose a verify token and enter the same value here and in Meta. Save here, then verify in Meta and subscribe the Page to message events.",
       webhook: true,
       docs: [["Meta webhook setup", "https://developers.facebook.com/docs/messenger-platform/webhooks"]],
     },

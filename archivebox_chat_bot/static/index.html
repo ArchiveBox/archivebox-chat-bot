@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ArchiveBox Chat Bot</title>
+    <title>Chatbot Admin Console · ArchiveBox</title>
     <link rel="stylesheet" href="/static/style.css" />
     <script src="/static/guides.js" defer></script>
     <script src="/static/app.js" defer></script>
@@ -15,21 +15,21 @@
         <h1>Your archive.<br />Your conversations.</h1>
         <p id="login-description">Sign in to connect your bots.</p>
         <label
-          >Console password<input
+          >Chatbot Admin Console password<input
             id="password"
             type="password"
             autocomplete="current-password"
             required /></label>
         <label id="confirm-password-label" hidden>Confirm password<input
             id="confirm-password" type="password" autocomplete="new-password" /></label>
-        <button id="login-submit">Open console →</button>
+        <button id="login-submit">Open Chatbot Admin Console →</button>
         <p id="login-error" role="alert"></p>
       </form>
     </section>
     <div id="console" class="shell" hidden>
       <aside>
         <div class="brand">
-          ▤ <span>ArchiveBox<small>CHAT BOT</small></span>
+          ▤ <span>ArchiveBox<small>Chatbot Admin Console</small></span>
         </div>
         <nav>
           <button class="nav active" data-tab="connections">
@@ -111,7 +111,7 @@
                       name="plugins"
                       placeholder="Your ArchiveBox defaults" /></label
                   ><label
-                    >Public bot console URL<input
+                    >Public Chatbot Admin Console URL<input
                       name="public_url"
                       type="url"
                       placeholder="For HTTPS webhooks and OAuth"
@@ -201,7 +201,7 @@
             <div id="jobs" class="panel"></div>
             <form id="password-form" class="panel">
               <details>
-                <summary>Console password</summary>
+                <summary>Chatbot Admin Console password</summary>
                 <div class="form-grid">
                   <label
                     >Current password<input
