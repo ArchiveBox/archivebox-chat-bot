@@ -1,5 +1,6 @@
 const $ = (s) => document.querySelector(s);
 let csrf = "",
+  firstRun = false,
   current,
   editing,
   role = "capture",
@@ -20,10 +21,6 @@ const providers = {
     name: "Slack",
     icon: "#",
     blurb: "Workspaces, threads, DMs",
-    fields: [
-      ["bot_token", "Bot token", "password"],
-      ["app_token", "App token", "password"],
-    ],
     advanced: [
       ["history_token", "Thread history user token", "password"],
       ["client_id", "OAuth client ID"],
@@ -201,6 +198,14 @@ function field(parent, spec, obj) {
   if (type === "select" && !obj[key]) obj[key] = choices[0];
   if (type === "password" && obj.configured_secrets?.includes(key))
     input.placeholder = "Connected · leave blank to keep";
+  if (editing?.platform === "slack" && ["bot_token", "app_token"].includes(key)) {
+    const prefix = key === "bot_token" ? "xoxb-" : "xapp-";
+    input.placeholder ||= `${prefix}…`;
+    input.pattern = `${prefix}[A-Za-z0-9-]+`;
+    input.title = `Paste the Slack token starting with ${prefix}`;
+    input.required = editing[role].enabled && !obj.configured_secrets?.includes(key) &&
+      (key === "bot_token" || (editing.options.transport || "socket") === "socket");
+  }
   input.autocomplete = type === "password" ? "off" : "";
   input.oninput = () => {
     dirty = true;
@@ -216,9 +221,18 @@ function field(parent, spec, obj) {
       const token = input.value.match(/\b\d{6,}:[A-Za-z0-9_-]{25,}\b/);
       if (token) obj[key] = token[0];
     }
+    if (editing.platform === "slack" && ["bot_token", "app_token"].includes(key)) {
+      const tokens = input.value.match(/\b(?:xoxb|xapp)-[A-Za-z0-9-]+/g) || [];
+      if (tokens.length) { obj[key] = ""; input.value = ""; }
+      for (const token of tokens) {
+        const target = token.startsWith("xoxb-") ? "bot_token" : "app_token";
+        obj[target] = token;
+        $("#connection-form").elements[target].value = token;
+      }
+    }
     if (
-      key === "transport" &&
-      ["messenger", "whatsapp"].includes(editing.platform)
+      (key === "transport" && ["messenger", "whatsapp", "slack"].includes(editing.platform)) ||
+      (key === "enabled" && editing.platform === "slack")
     )
       renderEditor();
   };
@@ -389,6 +403,7 @@ async function edit(id, r = "capture", platform) {
         ai_allowed_users: [],
         commands: ["help", "save", "search", "status", "auto"],
       };
+  if (r === "ai") editing.ai.enabled = true;
   editing.people = [];
   dirty = false;
   $("#setup-guide").open = !id || !status(editing, r).ok;
@@ -420,6 +435,8 @@ function renderSetupGuide() {
   for (const step of setupGuides[variant]) {
     const item = el("li"), content = el("div", undefined, "guide-step");
     content.append(el("h3", step.title), el("p", step.text.replaceAll("{bot}", bot)));
+    if (step.action === "slack-create")
+      content.append(link("Create Slack app ↗", `/api/manifest/${role}?create=true&connection_id=${editing.id}&transport=${editing.options.transport || "socket"}`));
     const file = role === "ai" && step.aiImage ? step.aiImage : step.image;
     if (file) {
       const figure = el("figure"), zoom = el("a"), img = el("img");
@@ -447,6 +464,7 @@ function renderSetupGuide() {
       figure.append(zoom, caption);
       content.append(figure);
     }
+    if (step.field) field(content, step.field, account.options);
     if (step.webhook) {
       const base = current.settings.public_url || location.origin,
         callback = `${base.replace(/\/$/, "")}/connections/${editing.id}/${role}/webhook`;
@@ -473,9 +491,10 @@ function renderSetupGuide() {
 }
 function renderEditor() {
   const p = providers[editing.platform],
-    account = editing[role],
-    box = $("#editor-fields");
+    account = editing[role];
+  let box = $("#editor-fields");
   box.replaceChildren();
+  $(".editor-layout").classList.toggle("slack-setup", editing.platform === "slack");
   renderSetupGuide();
   $("#editor-provider").textContent = p.name;
   $("#editor-title").textContent =
@@ -484,6 +503,17 @@ function renderEditor() {
   $("#remove-connection").hidden = !current.settings.connections.some(
     (c) => c.id === editing.id,
   );
+  if (editing.platform === "slack") {
+    if (role === "capture")
+      box.append(el("p", "Connect once → New URLs + Saved URLs are created automatically. Invite ArchiveBox Bot to any other channel you want to use.", "inline-note"));
+    else
+      box.append(el("p", "Use a separate Slack app for ArchiveBox AI Bot. Choose who can run tasks under Trusted people below.", "inline-note"));
+    const options = el("details");
+    options.open = role === "ai" || Boolean(status(editing, role).ok);
+    options.append(el("summary", "Bot preferences & existing channels"));
+    box.append(options);
+    box = options;
+  }
   const base = el("div", undefined, "form-grid");
   box.append(base);
   field(base, ["name", "Connection name"], editing);
@@ -493,12 +523,6 @@ function renderEditor() {
   const guide = el("div", undefined, "button-row");
   box.append(guide);
   if (editing.platform === "slack") {
-    guide.append(
-      link(
-        "1. Create preconfigured app ↗",
-        `/api/manifest/${role}?create=true&connection_id=${editing.id}`,
-      ),
-    );
     if (account.options.client_id)
       guide.append(
         link(
@@ -506,7 +530,6 @@ function renderEditor() {
           `/connections/${editing.id}/slack/${role}/install`,
         ),
       );
-    box.append(el("p", "Create → install → paste bot & app tokens.", "muted"));
   }
   if (editing.platform === "telegram")
     guide.append(link("Open BotFather ↗", "https://t.me/BotFather"));
@@ -542,7 +565,8 @@ function renderEditor() {
     );
   const creds = el("div", undefined, "form-grid");
   box.append(creds);
-  for (const f of p.fields) field(creds, f, account.options);
+  if (editing.platform !== "slack")
+    for (const f of p.fields) field(creds, f, account.options);
   if (editing.platform === "beeper") {
     guide.append(link("Open Beeper ↗", "https://www.beeper.com/download"));
     box.append(button("Find my accounts", discoverBeeper));
@@ -585,6 +609,7 @@ function renderEditor() {
     for (const [key, title] of [
       ["enable_mentions", "Save links when mentioned"],
       ["enable_dms", "Save links in DMs"],
+      ["enable_new_urls", "Save links from New URLs"],
       ["auto_archive_groups", "Archive every link in joined groups"],
       ["enable_saved_urls", "Post completed snapshots"],
     ])
@@ -595,7 +620,7 @@ function renderEditor() {
     ]) {
       const label = el("label", title),
         select = el("select");
-      select.append(new Option("Choose a conversation", ""));
+      select.append(new Option(editing.platform === "slack" ? `Create #${editing[`${key}_name`]}` : "Choose a conversation", ""));
       for (const g of current.groups[editing.id] || [])
         select.append(new Option(g.name, g.channel));
       if (
@@ -611,7 +636,7 @@ function renderEditor() {
       label.append(select);
       permissions.append(label);
     }
-    if (["slack", "zulip"].includes(editing.platform))
+    if (editing.platform === "zulip")
       box.append(
         button("Create New URLs + Saved URLs channels", async () => {
           await saveConnection(false);
@@ -680,11 +705,15 @@ function renderEditor() {
     };
   }
   if (role === "capture") {
+    if (editing.platform === "slack") {
+      field(advanced, ["new_channel_name", "New URLs channel name"], editing);
+      field(advanced, ["saved_channel_name", "Saved URLs channel name"], editing);
+    }
     field(advanced, ["new_channel", "New URLs ID"], editing);
     field(advanced, ["saved_channel", "Saved URLs ID"], editing);
     field(
       advanced,
-      ["upload_images", "Upload screenshot and favicon", "checkbox"],
+      ["upload_images", "Include screenshot previews", "checkbox"],
       editing,
     );
     field(advanced, ["allow_guests", "Allow guests", "checkbox"], editing);
@@ -713,8 +742,12 @@ async function saveConnection(close = true) {
   });
   dirty = false;
   await refresh();
+  if (value.platform === "slack" && value[role].enabled && !status(value, role).ok) {
+    $("#setup-guide").open = true;
+    throw new Error(statusText(status(value, role)));
+  }
   if (close) $("#editor").close();
-  toast("Connection saved.");
+  toast(value.platform === "slack" && value[role].enabled ? "Slack connected. Send your bot a DM to get started." : "Connection saved.");
 }
 function renderJobs(jobs) {
   $("#jobs").replaceChildren();
@@ -753,6 +786,7 @@ function renderJobs(jobs) {
   }
 }
 async function refresh() {
+  const previousStatus = editing && current ? JSON.stringify(status(editing, role)) : "";
   const state = await api("/api/state");
   current = state;
   csrf = state.csrf;
@@ -787,7 +821,7 @@ async function refresh() {
   renderConnections();
   renderJobs(state.jobs);
   updateLocalUrlWarning();
-  if ($("#editor").open && !dirty) renderEditor();
+  if ($("#editor").open && !dirty && previousStatus !== JSON.stringify(status(editing, role))) renderEditor();
 }
 for (const [id, p] of Object.entries(providers)) {
   const b = button("", () => edit(null, "capture", id), "provider-card");
@@ -802,12 +836,18 @@ for (const [id, p] of Object.entries(providers)) {
 $("#login-form").onsubmit = (e) => {
   e.preventDefault();
   action(async () => {
-    const result = await api("/auth/login", {
+    if (firstRun && $("#password").value !== $("#confirm-password").value) {
+      $("#login-error").textContent = "Passwords do not match.";
+      return;
+    }
+    const result = await api(firstRun ? "/auth/setup" : "/auth/login", {
       method: "POST",
       body: JSON.stringify({ password: $("#password").value }),
     });
     csrf = result.csrf;
     $("#password").value = "";
+    $("#confirm-password").value = "";
+    await showLogin();
     await refresh();
   });
 };
@@ -856,7 +896,13 @@ $("#password-form").onsubmit = (e) => {
 };
 $("#connection-form").onsubmit = (e) => {
   e.preventDefault();
-  action(() => saveConnection());
+  action(async () => {
+    const submit = $("#connect-submit");
+    submit.disabled = true;
+    submit.textContent = "Connecting…";
+    try { await saveConnection(); }
+    finally { submit.disabled = false; submit.textContent = "Save & connect →"; }
+  });
 };
 $("#close-editor").onclick = () => $("#editor").close();
 $("#remove-connection").onclick = () =>
@@ -889,7 +935,20 @@ openTab(
     ? location.hash.slice(1)
     : "connections",
 );
-refresh().catch(() => {});
+async function showLogin() {
+  firstRun = (await api("/auth/setup")).required;
+  $("#login-description").textContent = firstRun
+    ? "Choose a password for your bot console."
+    : "Sign in to connect your bots.";
+  $("#login-submit").textContent = firstRun ? "Create password & continue →" : "Open console →";
+  $("#password").autocomplete = firstRun ? "new-password" : "current-password";
+  $("#password").minLength = firstRun ? 12 : 1;
+  $("#password").placeholder = firstRun ? "At least 12 characters" : "";
+  $("#confirm-password-label").hidden = !firstRun;
+  $("#confirm-password").required = firstRun;
+  $("#login-error").textContent = "";
+}
+showLogin().then(() => refresh()).catch(() => {});
 setInterval(() => {
   if (!$("#console").hidden) action(refresh);
 }, 8000);

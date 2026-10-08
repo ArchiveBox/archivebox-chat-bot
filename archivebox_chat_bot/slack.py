@@ -37,6 +37,12 @@ class Slack:
         self.last_error = ""
 
     async def check(self):
+        if not self.options.get("bot_token", "").startswith("xoxb-"):
+            raise ValueError("Copy the Bot User OAuth Token (xoxb-) from Slack → OAuth & Permissions")
+        if self.options.get("transport", "socket") == "socket" and not self.options.get("app_token", "").startswith(
+            "xapp-"
+        ):
+            raise ValueError("Generate an App-Level Token (xapp-) with connections:write in Slack → Basic Information")
         self.identity = (await self.client.auth_test()).data
         return {
             "name": self.identity["user"],
@@ -46,7 +52,8 @@ class Slack:
         }
 
     async def start(self, on_message):
-        await self.check()
+        if not self.identity:
+            await self.check()
         self.on_message = on_message
         app_token = self.options.get("app_token", "")
         if self.options.get("transport", "socket") == "socket":

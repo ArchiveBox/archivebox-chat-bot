@@ -489,9 +489,6 @@ summary {
   padding: 13px !important;
   text-align: left;
 }
-.login-card button span {
-  float: right;
-}
 #login-error {
   color: #ae493d;
   font-size: 11px;
@@ -828,6 +825,21 @@ button:disabled {
   }
 }
 /* Provider instructions stay beside the fields they explain. */
+.editor-layout.slack-setup {
+  display: block;
+}
+.slack-setup .guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 30px;
+}
+.slack-setup .guide-step label,
+.slack-setup .guide-step .button {
+  margin-top: 16px;
+}
+.slack-setup .guide-step input {
+  min-width: 0;
+}
 dialog:has(.setup-guide[open]) {
   width: min(1180px, calc(100vw - 30px));
 }
@@ -921,6 +933,9 @@ dialog:has(.setup-guide[open]) {
   margin-top: 8px;
 }
 @media (max-width: 900px) {
+  .slack-setup .guide-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .editor-layout {
     grid-template-columns: minmax(0, 1fr);
   }

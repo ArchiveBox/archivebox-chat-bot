@@ -6,11 +6,13 @@
 
 [![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml) [![MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE) ![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
 
-[ArchiveBox Bot](#-archivebox-bot) · [ArchiveBox AI Bot](#-archivebox-ai-bot) · [Setup](#connect-your-apps)
+[ArchiveBox Bot](#archivebox-bot) · [ArchiveBox AI Bot](#archivebox-ai-bot) · [Setup](#connect-your-chat-apps)
 
 [Slack](#slack) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper)
 
 </div>
+
+<a id="archivebox-bot"></a>
 
 ## 🏛️ `@ArchiveBox` Bot
 
@@ -28,12 +30,16 @@
 git clone https://github.com/ArchiveBox/archivebox-chat-bot.git
 cd archivebox-chat-bot
 docker compose up -d --build
-docker compose exec archivebox-chat-bot cat /data/admin-password
 ```
 
-1. **[Open setup](http://localhost:8001)** → ArchiveBox server URL + API key.
+1. **[Open setup](http://localhost:5798)** → choose your console password → ArchiveBox server URL + API key.
 2. **Choose a provider below** → connect ArchiveBox Bot.
 3. **Pick conversations** → New URLs, Saved URLs, groups, permissions.
+
+- **Data:** `./archivebox-chat-bot/` · [docker-compose.yml](docker-compose.yml).
+- **Optional password preset:** uncomment `ADMIN_PASSWORD` to skip the first-run screen.
+
+<a href="screenshots/first-run.jpg"><img src="screenshots/first-run.jpg" width="320" alt="First-run console password setup"></a>
 
 <a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Actual shared setup console with connected providers and a nonblocking localhost warning"></a>
 
@@ -44,17 +50,21 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 
 ### Providers
 
+---
+
+<img src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png" align="right" width="80" style="float: right; width: 80px;" alt="Slack logo">
+
 #### Slack
 
-- **Connect:** [create/install the app](https://docs.slack.dev/tools/bolt-js/creating-an-app/) → [bot token](https://docs.slack.dev/authentication/tokens/) + [app token](https://docs.slack.dev/tools/python-slack-sdk/socket-mode/).
+- **Connect:** choose **Create Slack app** in the console → install the preconfigured app → follow the two screenshot guides to paste your **Bot token** (`xoxb-…`) and **App token** (`xapp-…`) → **Save & connect**.
 - **Use:** invite the bot to channels; mention it in a thread or send a DM.
-- **Destinations:** create **New URLs + Saved URLs** in the console. Socket Mode needs no public webhook.
+- **Destinations:** **Save & connect** creates **New URLs + Saved URLs** automatically. Socket Mode needs no public webhook.
 
 <table>
 <tr><th width="33%">1 · Set up the Slack app</th><th width="33%">2 · Configure the bot</th><th width="33%">3 · Mention in a thread</th></tr>
 <tr>
 <td width="33%" valign="top"><a href="screenshots/slack-setup.jpg"><img src="screenshots/slack-setup.jpg" width="100%" alt="Actual Slack App Home for ArchiveBox Bot"></a></td>
-<td width="33%" valign="top"><a href="screenshots/slack-config.png"><img src="screenshots/slack-config.png" width="100%" alt="Actual Slack bot settings and destination controls in the shared console"></a></td>
+<td width="33%" valign="top"><a href="screenshots/slack-onboarding.jpg"><img src="screenshots/slack-onboarding.jpg" width="100%" alt="Connected Slack bot with three guided setup steps, token screenshots, and automatic channel setup"></a></td>
 <td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Real Slack mention saving links from the previous message with a completion reaction"></a></td>
 </tr>
 </table>
@@ -83,6 +93,10 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 
 </details>
 
+---
+
+<img src="https://static.zulipchat.com/static/images/favicon.svg" align="right" width="80" style="float: right; width: 80px;" alt="Zulip logo">
+
 #### Zulip
 
 - **Connect:** [create a Generic bot](https://zulip.com/help/add-a-bot-or-integration) → [copy bot email + API key](https://zulip.com/api/api-keys) → enter your server URL.
@@ -96,6 +110,10 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 <td width="33%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip snapshot card with uploaded screenshot and favicon"></a></td>
 </tr>
 </table>
+
+---
+
+<img src="https://telegram.org/img/website_icon.svg" align="right" width="80" style="float: right; width: 80px;" alt="Telegram logo">
 
 #### Telegram
 
@@ -121,6 +139,10 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 
 </details>
 
+---
+
+<img src="https://static.whatsapp.net/rsrc.php/y1/r/FJbTMJqMap7.svg" align="right" width="80" style="float: right; width: 80px;" alt="WhatsApp logo">
+
 #### WhatsApp
 
 - **Connect:** [Settings → Agents → Create an agent → View API key](https://www.whatsapp.com/developer/WhatsApp-Agent-Platform-Developer-Manual.pdf#page=3) on your primary phone.
@@ -137,6 +159,10 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 
 Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents-on-ios/) · [Android](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents/). Capture screenshot: our live test.
 
+---
+
+<img src="https://libera.chat/static/img/libera-color.svg" align="right" width="80" style="float: right; width: 80px;" alt="Libera.Chat IRC logo">
+
 #### IRC
 
 - **Connect:** [server + nickname + channels](https://libera.chat/guides/connect) → [register an account](https://libera.chat/guides/registration) → [SASL](https://libera.chat/guides/sasl).
@@ -149,6 +175,10 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <td width="50%" valign="top"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC channel with archived Python asyncio references"></a></td>
 </tr>
 </table>
+
+---
+
+<img src="https://support.apple.com/content/dam/edam/applecare/images/en_US/psp/psp_heroes/mini-hero-messages-app.png" align="right" width="80" style="float: right; width: 80px;" alt="iMessage logo">
 
 #### iMessage
 
@@ -171,6 +201,10 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 </details>
 
+---
+
+<img src="screenshots/logos/messenger.png" align="right" width="80" style="float: right; width: 80px;" alt="Messenger logo">
+
 #### Messenger
 
 - **Connect:** [Meta app + Page token](https://developers.facebook.com/docs/messenger-platform/get-started) → [HTTPS webhook](https://developers.facebook.com/docs/messenger-platform/webhooks); or an existing [Matrix bridge](https://github.com/mautrix/meta).
@@ -192,6 +226,10 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 </details>
 
+---
+
+<img src="https://www.beeper.com/wp-content/uploads/2026/05/beeper-favicon.png" align="right" width="80" style="float: right; width: 80px;" alt="Beeper logo">
+
 #### Beeper
 
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
@@ -208,10 +246,12 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <details>
 <summary><b>Docker → Beeper address & screenshot credit</b></summary>
 
-- Host address: `http://host.docker.internal:<port>`; container `localhost` points at the bot itself. Beeper runs separately; iMessage needs a Mac.
+- Use the Beeper server's reachable network address; container `localhost` points at the bot itself. Beeper runs separately; iMessage needs a Mac.
 - Token example: [Felix Krause](https://krausefx.com/blog/openclaw-my-automation-setup), earlier Beeper UI. Enable **Allow sensitive actions** for replies (off in that image).
 
 </details>
+
+---
 
 ### Groups & commands
 
@@ -241,10 +281,10 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <details>
 <summary><b>Deployment & updates</b></summary>
 
-- Include ArchiveBox: `docker compose --profile archivebox up -d --build`.
-- ArchiveBox inside Compose: `http://archivebox:5797`; on the host: `http://host.docker.internal:5797`.
+- Include ArchiveBox: uncomment the `archivebox` service in [docker-compose.yml](docker-compose.yml), then run `docker compose up -d --build`.
+- ArchiveBox inside Compose: `http://archivebox:5797`; for a separately hosted server, use its reachable URL.
 - **Public URL** is the address readers open; split API/admin hosts are discovered automatically.
-- Back up **bridge_data**; run one service per data volume.
+- Back up `./archivebox-chat-bot/`; run one bot service per data directory.
 - Update: `git pull --ff-only && docker compose up -d --build`.
 
 </details>
@@ -254,7 +294,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 - **Activity** → jobs, sessions, **Recover answer**, console password.
 - Queued jobs retain their original server/connection; review uncertain delivery before retrying.
-- Blank credential fields preserve secrets. Protect the volume; use HTTPS for remote access.
+- Blank credential fields preserve secrets. Protect the data directory; use HTTPS for remote access.
 - Revoke credentials to remove access. Removing bot data preserves snapshots and chat messages.
 
 </details>
@@ -272,9 +312,11 @@ uv run ruff check .
 
 - Python: shared capture/agent engine, queue, permissions, console.
 - Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
-- Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers.
+- Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers. Provider logos are official website assets; IRC uses the Libera.Chat network logo, and the bundled Messenger logo comes from [Messenger](https://www.messenger.com/).
 
 </details>
+
+<a id="archivebox-ai-bot"></a>
 
 ## 🧠 `@ArchiveBoxAI` Bot
 
@@ -291,9 +333,13 @@ uv run ruff check .
 
 ### AI providers
 
+---
+
+<img src="https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png" align="right" width="80" style="float: right; width: 80px;" alt="Slack logo">
+
 #### Slack AI
 
-- **Connect:** second preconfigured Slack app; native agent status and Stop controls.
+- **Connect:** choose **Create Slack app** for ArchiveBox AI Bot → install the second preconfigured app → paste its **Bot token** and **App token** → **Save & connect**. Native agent status and Stop controls appear in Slack.
 - **Shown:** plan → approval → capture HTTP caching references → tag and verify.
 
 <table>
@@ -303,6 +349,10 @@ uv run ruff check .
 <td width="50%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="Real Slack AI conversation planning, capturing, tagging, and verifying HTTP caching references"></a></td>
 </tr>
 </table>
+
+---
+
+<img src="https://telegram.org/img/website_icon.svg" align="right" width="80" style="float: right; width: 80px;" alt="Telegram logo">
 
 #### Telegram AI
 
@@ -317,6 +367,10 @@ uv run ruff check .
 </tr>
 </table>
 
+---
+
+<img src="https://libera.chat/static/img/libera-color.svg" align="right" width="80" style="float: right; width: 80px;" alt="Libera.Chat IRC logo">
+
 #### IRC AI
 
 - **Connect:** second nickname/account on the same server.
@@ -329,6 +383,10 @@ uv run ruff check .
 <td width="50%" valign="top"><a href="screenshots/irc-ai.png"><img src="screenshots/irc-ai.png" width="100%" alt="Real IRC AI task capturing Queue documentation and explaining shutdown from saved HTML"></a></td>
 </tr>
 </table>
+
+---
+
+<img src="https://static.whatsapp.net/rsrc.php/y1/r/FJbTMJqMap7.svg" align="right" width="80" style="float: right; width: 80px;" alt="WhatsApp logo">
 
 #### WhatsApp AI
 
@@ -343,13 +401,6 @@ uv run ruff check .
 </tr>
 </table>
 
+---
+
 - **More providers:** follow the [Zulip](#zulip), [iMessage](#imessage), [Messenger](#messenger), or [Beeper](#beeper) setup with a separate bot/account.
-
-<details>
-<summary><b>Slack AgentExchange & Apps marketplace</b></summary>
-
-- **Not submitted or approved.** Self-hosted apps work independently of marketplace listing.
-- Review requires [10+ active workspaces](https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/), [HTTPS events rather than Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode/), support/privacy URLs, and reviewer access.
-- HTTPS Events + OAuth are implemented for your own public endpoint and Slack app.
-
-</details>

@@ -13,14 +13,16 @@
       <form id="login-form" class="login-card">
         <div class="brand-mark">▤</div>
         <h1>Your archive.<br />Your conversations.</h1>
-        <p>Sign in to connect your bots.</p>
+        <p id="login-description">Sign in to connect your bots.</p>
         <label
           >Console password<input
             id="password"
             type="password"
             autocomplete="current-password"
-            required /></label
-        ><button>Open console <span>→</span></button>
+            required /></label>
+        <label id="confirm-password-label" hidden>Confirm password<input
+            id="confirm-password" type="password" autocomplete="new-password" /></label>
+        <button id="login-submit">Open console →</button>
         <p id="login-error" role="alert"></p>
       </form>
     </section>
@@ -247,7 +249,7 @@
         <div class="dialog-actions">
           <button type="button" id="remove-connection" class="secondary">
             Disconnect</button
-          ><button type="submit">Save & connect →</button>
+          ><button type="submit" id="connect-submit">Save & connect →</button>
         </div>
       </form>
     </dialog>

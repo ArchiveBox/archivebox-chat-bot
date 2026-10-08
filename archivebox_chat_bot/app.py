@@ -30,17 +30,19 @@ def create_app(directory=None):
     store = Store(directory or os.environ.get("DATA_DIR", "data"))
     engine = Runtime(store)
     password = os.environ.get("ADMIN_PASSWORD", "")
-    if not store.meta("password_hash"):
-        if not password:
-            password = secrets.token_urlsafe(18)
-            credential_path = store.directory / "admin-password"
-            credential_path.write_text(password + "\n")
-            credential_path.chmod(0o600)
-        if len(password) < 12:
-            raise ValueError("ADMIN_PASSWORD must be at least 12 characters")
+
+    def save_password(value):
+        if not 12 <= len(value) <= 1024:
+            raise ValueError("Choose a password of 12 to 1024 characters")
         salt = secrets.token_hex(16)
-        store.set_meta("password_salt", salt)
-        store.set_meta("password_hash", hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex())
+        digest = hashlib.scrypt(value.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex()
+        with store.db:
+            store.db.executemany(
+                "INSERT OR REPLACE INTO meta VALUES (?,?)", [("password_salt", salt), ("password_hash", digest)]
+            )
+
+    if password and not store.meta("password_hash"):
+        save_password(password)
     sessions = {}
     failures = {}
 
@@ -70,21 +72,52 @@ def create_app(directory=None):
         )
         return response
 
+    def verify_origin(request):
+        origin = request.headers.get("origin", "")
+        if origin and origin != str(request.base_url).rstrip("/"):
+            raise HTTPException(403, "Origin does not match this setup console")
+
+    def signed_in(request):
+        key, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+        sessions[key] = {"csrf": csrf, "expires": time.time() + 86400}
+        response = JSONResponse({"csrf": csrf})
+        response.set_cookie(
+            "abx_chat_session", key, httponly=True, samesite="lax", secure=request.url.scheme == "https", max_age=86400
+        )
+        return response
+
     async def authenticated(request: Request):
-        key = request.cookies.get("abx_slack_session", "")
+        key = request.cookies.get("abx_chat_session", "")
         session = sessions.get(key)
         if not session or session["expires"] < time.time():
             sessions.pop(key, None)
             raise HTTPException(401, "Sign in to the setup console")
         if request.method not in ("GET", "HEAD"):
-            origin = request.headers.get("origin", "")
-            if origin and origin != str(request.base_url).rstrip("/"):
-                raise HTTPException(403, "Origin does not match this setup console")
+            verify_origin(request)
             if not secrets.compare_digest(request.headers.get("x-csrf-token", ""), session["csrf"]):
                 raise HTTPException(403, "Refresh this page before saving")
         return session
 
     admin_session = Depends(authenticated)
+
+    @app.get("/auth/setup")
+    async def setup_status():
+        return {"required": not bool(store.meta("password_hash"))}
+
+    @app.post("/auth/setup")
+    async def setup_password(request: Request):
+        verify_origin(request)
+        if request.headers.get("content-type", "").split(";", 1)[0] != "application/json":
+            raise HTTPException(415, "Use the password setup form")
+        data = await request.json()
+        # No await between checking and saving: only the first setup request can win.
+        if store.meta("password_hash"):
+            raise HTTPException(409, "A password is already set. Sign in instead.")
+        try:
+            save_password(str(data.get("password", "")))
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return signed_in(request)
 
     @app.post("/auth/login")
     async def login(request: Request):
@@ -99,19 +132,13 @@ def create_app(directory=None):
             failures[host] = [*attempts, time.time()]
             raise HTTPException(401, "Incorrect password")
         failures.pop(host, None)
-        key, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-        sessions[key] = {"csrf": csrf, "expires": time.time() + 86400}
-        response = JSONResponse({"csrf": csrf})
-        response.set_cookie(
-            "abx_slack_session", key, httponly=True, samesite="lax", secure=request.url.scheme == "https", max_age=86400
-        )
-        return response
+        return signed_in(request)
 
     @app.post("/auth/logout")
     async def logout(request: Request, session=admin_session):
-        sessions.pop(request.cookies.get("abx_slack_session", ""), None)
+        sessions.pop(request.cookies.get("abx_chat_session", ""), None)
         response = JSONResponse({"ok": True})
-        response.delete_cookie("abx_slack_session")
+        response.delete_cookie("abx_chat_session")
         return response
 
     @app.post("/api/password")
@@ -122,12 +149,11 @@ def create_app(directory=None):
         if not hmac.compare_digest(digest, store.meta("password_hash")):
             raise HTTPException(403, "Current password is incorrect")
         new = str(data.get("new_password", ""))
-        if not 12 <= len(new) <= 1024:
-            raise HTTPException(422, "Choose a password of 12 to 1024 characters")
-        salt = secrets.token_hex(16)
-        store.set_meta("password_salt", salt)
-        store.set_meta("password_hash", hashlib.scrypt(new.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex())
-        current_key = request.cookies["abx_slack_session"]
+        try:
+            save_password(new)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        current_key = request.cookies["abx_chat_session"]
         sessions.clear()
         sessions[current_key] = session
         return {"ok": True}

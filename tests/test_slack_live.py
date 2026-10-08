@@ -18,6 +18,7 @@ async def test_real_bot_authentication():
         Connection(
             id="default",
             platform="slack",
+            options={"transport": "http"},
             capture=Account(enabled=True, options={"bot_token": credentials["bot_token"]}),
         )
     )

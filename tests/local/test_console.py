@@ -1,50 +1,4 @@
-import os
-import socket
-import subprocess
-import time
-from pathlib import Path
-
-import httpx
 import pytest
-
-ROOT = Path(__file__).resolve().parents[2]
-
-
-@pytest.fixture
-def console(tmp_path):
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-    env = {
-        **os.environ,
-        "DATA_DIR": str(tmp_path),
-        "PORT": str(port),
-        "HOST": "127.0.0.1",
-        "ADMIN_PASSWORD": "test-console-password-123",
-    }
-    proc = subprocess.Popen(
-        ["uv", "run", "--project", str(ROOT), "archivebox-chat-bot"],
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-    )
-    client = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=3)
-    try:
-        deadline = time.monotonic() + 15
-        while True:
-            assert proc.poll() is None, proc.stderr.read().decode()
-            try:
-                if client.get("/healthz").status_code == 200:
-                    break
-            except httpx.ConnectError:
-                pass
-            assert time.monotonic() < deadline
-            time.sleep(0.1)
-        yield client
-    finally:
-        client.close()
-        proc.terminate()
-        proc.wait(timeout=10)
 
 
 def login(client):
@@ -54,6 +8,8 @@ def login(client):
 
 
 def test_admin_login_csrf_redaction_and_persisted_settings(console):
+    assert console.get("/auth/setup").json() == {"required": False}
+    assert console.post("/auth/setup", json={"password": "replacement-password"}).status_code == 409
     assert console.get("/").status_code == 200
     assert console.get("/api/state").status_code == 401
     assert console.post("/auth/login", json={"password": "incorrect"}).status_code == 401
@@ -155,3 +111,55 @@ def test_missing_zulip_settings_are_actionable_and_password_can_rotate(console):
     assert console.post("/auth/logout").status_code == 200
     assert console.post("/auth/login", json={"password": "test-console-password-123"}).status_code == 401
     assert console.post("/auth/login", json={"password": "new-test-password-123"}).status_code == 200
+
+
+def test_slack_setup_explains_missing_tokens(console):
+    login(console)
+    connection = {"id": "slack-setup", "platform": "slack"}
+    assert console.put("/api/settings", json={"connections": [connection]}).status_code == 200
+    state = console.get("/api/state").json()
+    error = state["connections"]["chat"]["slack-setup"]["roles"]["capture"]["error"]
+    assert "Bot User OAuth Token" in error and "xoxb-" in error
+    connection["capture"] = {"enabled": True, "options": {"bot_token": "xoxb-local-format-check"}}
+    assert console.put("/api/settings", json={"connections": [connection]}).status_code == 200
+    state = console.get("/api/state").json()
+    error = state["connections"]["chat"]["slack-setup"]["roles"]["capture"]["error"]
+    assert "App-Level Token" in error and "xapp-" in error
+    assert not state["settings"]["connections"][0]["new_channel"]
+    assert not state["settings"]["connections"][0]["saved_channel"]
+
+
+@pytest.mark.parametrize("console", ["first-run"], indirect=True)
+def test_first_run_password_setup_is_one_time_and_persisted(console, tmp_path):
+    import sqlite3
+
+    assert console.get("/auth/setup").json() == {"required": True}
+    assert console.get("/api/state").status_code == 401
+    assert console.post("/auth/setup", json={"password": "short"}).status_code == 422
+    assert (
+        console.post(
+            "/auth/setup",
+            headers={"Origin": "https://attacker.invalid"},
+            json={"password": "test-console-password-123"},
+        ).status_code
+        == 403
+    )
+    assert (
+        console.post(
+            "/auth/setup", headers={"Content-Type": "text/plain"}, content='{"password":"test-console-password-123"}'
+        ).status_code
+        == 415
+    )
+    result = console.post("/auth/setup", json={"password": "test-console-password-123"})
+    assert result.status_code == 200
+    assert console.get("/auth/setup").json() == {"required": False}
+    assert console.get("/api/state").status_code == 200
+    assert not (tmp_path / "admin-password").exists()
+    with sqlite3.connect(tmp_path / "bridge.sqlite3") as db:
+        digest = db.execute("SELECT value FROM meta WHERE key='password_hash'").fetchone()[0]
+        assert len(digest) == 128 and digest != "test-console-password-123"
+    console.headers["x-csrf-token"] = result.json()["csrf"]
+    assert console.post("/auth/logout").status_code == 200
+    assert console.post("/auth/setup", json={"password": "replacement-password"}).status_code == 409
+    login(console)
+    assert console.get("/api/state").status_code == 200

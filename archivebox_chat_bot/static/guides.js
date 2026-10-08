@@ -3,7 +3,8 @@ const setupGuides = {
   slack: [
     {
       title: "Create and install your Slack app",
-      text: "Use Create preconfigured app below, choose your workspace, then Install to Workspace → Allow.",
+      text: "Choose your workspace → Create → Install to Workspace → Allow. Permissions, events, and commands are already filled in.",
+      action: "slack-create",
       image: "slack-install.png",
       caption: "Install to Workspace · Slack documentation",
       source: "https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/",
@@ -11,7 +12,8 @@ const setupGuides = {
     },
     {
       title: "Copy the bot token",
-      text: "OAuth & Permissions → Bot User OAuth Token → Copy. Paste the xoxb- token into Bot token.",
+      text: "OAuth & Permissions → Bot User OAuth Token → Copy. Paste it here.",
+      field: ["bot_token", "Bot token · starts with xoxb-", "password"],
       image: "slack-bot-token.png",
       caption: "Bot User OAuth Token · Slack documentation (example token blurred by Slack)",
       source: "https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/",
@@ -19,7 +21,8 @@ const setupGuides = {
     },
     {
       title: "Generate the app token",
-      text: "Basic Information → App-Level Tokens → Generate Token and Scopes. Add connections:write, generate, then paste the xapp- token into App token. Keep Socket Mode enabled.",
+      text: "Basic Information → App-Level Tokens → Generate Token and Scopes. Name it ArchiveBox, add connections:write → Generate → copy and paste here.",
+      field: ["app_token", "App token · starts with xapp-", "password"],
       image: "slack-app-token-setup.jpg",
       caption: "Our installed Slack app · app-level token controls",
       docs: [["Socket Mode setup", "https://docs.slack.dev/tools/python-slack-sdk/socket-mode/"]],

@@ -19,7 +19,12 @@ log = logging.getLogger(__name__)
 
 def safe_error(error):
     if isinstance(error, SlackApiError):
-        return f"Slack: {error.response.get('error', 'request failed')}"
+        code = error.response.get("error", "request failed")
+        return {
+            "invalid_auth": "Slack could not verify this token. Copy it again from your Slack app's settings.",
+            "token_revoked": "Slack access was revoked. Reinstall your Slack app and copy its new token.",
+            "missing_scope": "Your Slack app needs another permission. Use the preconfigured app setup and reinstall it.",
+        }.get(code, f"Slack: {code}")
     if isinstance(error, httpx.TransportError):
         return "Connection interrupted. Inspect the remote result before retrying."
     if isinstance(error, TimeoutError):
@@ -100,6 +105,19 @@ class Engine:
             try:
                 bot = self.adapters.create(self.connection, role, self.settings)
                 self.bots[role] = bot
+                if (
+                    self.connection.platform == "slack"
+                    and role == "capture"
+                    and (
+                        (self.connection.enable_new_urls and not self.connection.new_channel)
+                        or (self.connection.enable_saved_urls and not self.connection.saved_channel)
+                    )
+                ):
+                    # Resolve destinations before receiving messages or binding durable job scopes.
+                    await bot.check()
+                    for field, channel in (await bot.setup_channels()).items():
+                        setattr(self.connection, field, channel)
+                    self.store.save_settings(self.settings)
                 await bot.start(self.receive)
                 self.bind_source(role)
                 self.connections[role] = {"ok": True, "capabilities": getattr(bot, "capabilities", {})}

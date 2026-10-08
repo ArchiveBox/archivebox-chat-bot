@@ -1,0 +1,20 @@
+services:
+  archivebox-chat-bot:
+    build: .
+    ports:
+      - "127.0.0.1:${CONSOLE_PORT:-5798}:5798"
+    volumes:
+      - ./archivebox-chat-bot:/data
+    # Set ADMIN_PASSWORD to skip the first-run password setup UI.
+    # environment:
+    #   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    restart: unless-stopped
+
+  # Optional ArchiveBox server: uncomment this service to run it alongside the bot.
+  # archivebox:
+  #   image: archivebox/archivebox:dev
+  #   ports:
+  #     - "127.0.0.1:5797:5797"
+  #   volumes:
+  #     - ./archivebox:/data
+  #   restart: unless-stopped
