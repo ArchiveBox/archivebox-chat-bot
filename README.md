@@ -1,8 +1,8 @@
 <div align="center">
 
-# 📚 ArchiveBox Chat Bot
+# <img src="https://archivebox.io/icon.png" height="40px" align="top"/> ArchiveBox Chat Bot
 
-**Your chats → your archive.**
+**URLs in your group chats → saved to your private archive.**
 
 [![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml) [![MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE) ![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
 
@@ -12,15 +12,14 @@
 
 </div>
 
-## ↗ ArchiveBox Bot
+## ↗ `@ArchiveBox` Bot
 
-- **@mention** → save URLs from your message + the latest 10 messages.
-- **DM / New URLs** → save every URL you send.
-- **Groups** → optionally archive every link shared there.
-- **Saved URLs** → linked title, screenshot, original URL, 🌐, **Saved 475 KB**, persona.
-- **Tags** → provider + sender + group: `slack,bob,accounting`; DMs omit the group.
+- **mention @ArchiveBox in any thread** → saves all URLs mentioned in the last 10 messages
+- **DM @ArchiveBox bot with any text** → archives every URL in your DM, AI bot can also handle complex tasks
+- **Add @ArchiveBox to group chats** → optionally archive all URLs shared in groups it's added to
+- **Auto-tags URLs with source info** → `slack,bob,reading-list` (connector, user, channel name)
 
-### Connect your apps
+### Connect your chat apps
 
 <details>
 <summary><b>🐳 Docker → ArchiveBox URL + API key → chat provider</b></summary>
@@ -281,7 +280,7 @@ uv run ruff check .
 
 </details>
 
-## ✧ ArchiveBox AI Bot
+## 🧠 `@ArchiveBoxAI` Bot
 
 - **DM / @mention** → research, capture, tag, organize, and verify.
 - **Follow up** → include recent messages and previous replies.
