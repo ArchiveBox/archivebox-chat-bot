@@ -48,6 +48,35 @@ class Runtime:
             if self.settings.archivebox_token and time.monotonic() - checked >= 30:
                 await self.check_archive()
                 checked = time.monotonic()
+            for engine in list(self.engines.values()):
+                for role, bot in list(engine.bots.items()):
+                    if engine.connections.get(role, {}).get("state") != "recovering":
+                        continue
+                    transport = getattr(bot, "transport", None)
+                    if getattr(transport, "error", ""):
+                        engine.connections[role] = {
+                            "ok": False,
+                            "state": "error",
+                            "error": transport.error,
+                            "capabilities": getattr(bot, "capabilities", {}),
+                        }
+                        continue
+                    if getattr(transport, "recovering", ""):
+                        continue
+                    try:
+                        result = await bot.check()
+                    except Exception as exc:  # noqa: BLE001 - preserve recovering state on any check failure
+                        # The transport poller records any terminal or transient
+                        # failure; keep the existing recovering state visible.
+                        log.warning("%s:%s recovery check failed: %s", engine.connection.id, role, safe_error(exc))
+                        continue
+                    if result.get("state", "connected") != "connected" or not bot.identity.get("user_id"):
+                        continue
+                    engine.bind_source(role)
+                    engine.connections[role] = {
+                        "ok": True,
+                        "capabilities": getattr(bot, "capabilities", {}),
+                    }
             for connection, status in self.status()["chat"].items():
                 for role, state in status["roles"].items():
                     identity = (connection, role)
@@ -114,6 +143,13 @@ class Runtime:
                     status.update(ok=False, error=safe_error(task.exception()))
                 if "state" in status:
                     status["ok"] = status["state"] == "connected"
+                if getattr(transport, "recovering", "") and not getattr(transport, "error", ""):
+                    status.update(
+                        ok=False,
+                        state="recovering",
+                        error=transport.recovering,
+                        detail=transport.recovering,
+                    )
                 identity = getattr(bot, "identity", {})
                 options = engine.connection.account_options(role)
                 status["username"] = (
@@ -154,6 +190,16 @@ class Runtime:
             previous = {c.id: c for c in self.settings.connections}
             desired = {c.id: c for c in settings.connections if c.enabled}
             changed = {key for key in previous.keys() | desired.keys() if previous.get(key) != desired.get(key)}
+            unhealthy = {
+                key
+                for key, state in self.status().get("chat", {}).items()
+                if key in desired
+                and (
+                    state.get("error")
+                    or any(not role.get("ok", False) for role in state.get("roles", {}).values())
+                )
+            }
+            changed.update(unhealthy)
             for key in changed:
                 old = self.engines.pop(key, None)
                 if old:

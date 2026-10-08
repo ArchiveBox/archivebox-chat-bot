@@ -176,6 +176,7 @@ class TransportBot:
         if result.get("state") == "error":
             raise RuntimeError(result.get("detail") or "Connector could not start")
         self.ready.set()
+        return result
 
     async def check(self):
         result = await self.call("check")

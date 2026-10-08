@@ -22,6 +22,10 @@ import httpx
 BASE_URL = "https://api.whatsapp.com/agent/v1"
 
 
+class TransientReadError(Exception):
+    """A read request failed transiently and can be retried without side effects."""
+
+
 class WhatsAppAgentTransport:
     def __init__(self, options: dict, account_id: str, data_dir: Path, emit):
         self.options, self.account_id, self.emit = options, account_id, emit
@@ -48,6 +52,7 @@ class WhatsAppAgentTransport:
         self.task = None
         self.first_page = None
         self.error = ""
+        self.recovering = ""
         self.lock_file = None
         self.send_lock = asyncio.Lock()
         self.poll_lock = asyncio.Lock()
@@ -92,6 +97,8 @@ class WhatsAppAgentTransport:
         try:
             response = await self.client.request(method, path, **kwargs)
         except httpx.TransportError:
+            if method == "GET":
+                raise TransientReadError("WhatsApp agent read request temporarily failed") from None
             action = (
                 "delivery may have completed; inspect the chat before retrying"
                 if method == "POST"
@@ -100,6 +107,8 @@ class WhatsAppAgentTransport:
             raise RuntimeError(f"WhatsApp agent network failure; {action}") from None
         if response.status_code == 204:
             return None
+        if method == "GET" and response.status_code >= 500:
+            raise TransientReadError(f"WhatsApp agent read service temporarily failed (HTTP {response.status_code})")
         try:
             payload = response.json()
         except ValueError:
@@ -141,13 +150,29 @@ class WhatsAppAgentTransport:
         self._lock()
         if self.error:
             raise RuntimeError(self.error)
+        if self.task and self.recovering:
+            return self._recovering_status()
         if not self.task and self.first_page is None:
-            self.first_page = await self._poll(0)
+            try:
+                self.first_page = await self._poll(0)
+            except TransientReadError:
+                self.recovering = "WhatsApp agent read temporarily failed; retrying automatically"
+                return self._recovering_status()
             if self.first_page:
                 self._identity(self.first_page)
+            self.recovering = ""
         return {
             "id": self.state.get("id", self.account_id),
             "name": self.options.get("name", "WhatsApp agent"),
+            "capabilities": {"reactions": False, "media": True, "threads": True, "groups": False},
+        }
+
+    def _recovering_status(self):
+        return {
+            "id": self.state.get("id", self.account_id),
+            "name": self.options.get("name", "WhatsApp agent"),
+            "state": "recovering",
+            "detail": self.recovering,
             "capabilities": {"reactions": False, "media": True, "threads": True, "groups": False},
         }
 
@@ -202,9 +227,18 @@ class WhatsAppAgentTransport:
         self._save()
 
     async def _run(self):
+        retry_delay = 1
         try:
             while True:
-                page = await self._poll(25)
+                try:
+                    page = await self._poll(25)
+                except TransientReadError:
+                    self.recovering = "WhatsApp agent read temporarily failed; retrying automatically"
+                    await asyncio.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60)
+                    continue
+                retry_delay = 1
+                self.recovering = ""
                 if page:
                     await self._ingest(page)
         except asyncio.CancelledError:

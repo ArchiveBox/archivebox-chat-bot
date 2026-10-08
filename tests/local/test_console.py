@@ -169,6 +169,12 @@ def test_slack_setup_explains_missing_tokens(console):
     assert "App-Level Token" in error and "xapp-" in error
     assert not state["settings"]["connections"][0]["new_channel"]
     assert not state["settings"]["connections"][0]["saved_channel"]
+    events = console.get("/api/events").json()["events"]
+    before = sum(event["kind"] == "connection" and event["message"] == "Connecting slack" for event in events)
+    assert console.put("/api/settings", json={"connections": [connection]}).status_code == 200
+    events = console.get("/api/events").json()["events"]
+    after = sum(event["kind"] == "connection" and event["message"] == "Connecting slack" for event in events)
+    assert after == before + 1
 
 
 @pytest.mark.parametrize("console", ["first-run"], indirect=True)

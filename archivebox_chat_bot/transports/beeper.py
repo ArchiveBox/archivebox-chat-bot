@@ -18,6 +18,10 @@ from urllib.parse import quote, urlsplit
 import httpx
 
 
+class TransientReadError(Exception):
+    """A read request failed transiently and can be retried without side effects."""
+
+
 class BeeperTransport:
     def __init__(self, options: dict, account_id: str, data_dir: Path, emit):
         self.options, self.account_id, self.emit = options, account_id, emit
@@ -44,7 +48,9 @@ class BeeperTransport:
         if not isinstance(self.state.get("outbound_message_ids"), dict):
             self.state["outbound_message_ids"] = {}
         self.identity = None
+        self.check_result = None
         self.error = ""
+        self.recovering = ""
         self.task = None
         self.send_lock = asyncio.Lock()
 
@@ -61,11 +67,15 @@ class BeeperTransport:
         try:
             response = await self.client.request(method, path, **kwargs)
         except httpx.TransportError:
+            if method == "GET":
+                raise TransientReadError("Beeper read request temporarily failed") from None
             raise RuntimeError("Beeper is unreachable; outbound delivery may be uncertain") from None
         if response.status_code in {401, 403}:
             raise RuntimeError("Beeper authentication required; sign in and approve an API connection")
         if allow_missing and response.status_code == 404:
             return None
+        if method == "GET" and response.status_code >= 500:
+            raise TransientReadError(f"Beeper read service temporarily failed (HTTP {response.status_code})")
         if not response.is_success:
             # Provider bodies can include tokens, messages, or internal bridge details.
             raise RuntimeError(f"Beeper request failed (HTTP {response.status_code}); check the connected account")
@@ -83,6 +93,30 @@ class BeeperTransport:
     async def check(self):
         if self.error:
             raise RuntimeError(self.error)
+        if self.task and self.recovering:
+            return self.check_result or self._recovering_status()
+        try:
+            result = await self._check_remote()
+        except TransientReadError:
+            self.recovering = "Beeper read temporarily failed; retrying automatically"
+            if self.task:
+                raise
+            return self._recovering_status()
+        self.recovering = ""
+        return result
+
+    def _recovering_status(self):
+        return {
+            "id": self.account_id,
+            "name": "Beeper",
+            "state": "recovering",
+            "detail": self.recovering,
+            "capabilities": {},
+        }
+
+    async def _check_remote(self):
+        if self.error:
+            raise RuntimeError(self.error)
         setup = await self._request("GET", "/v1/app/setup")
         if setup.get("state") == "needs-login":
             raise RuntimeError("Beeper needs sign-in; complete email sign-in and device verification on this server")
@@ -96,15 +130,12 @@ class BeeperTransport:
             raise RuntimeError(
                 "Beeper account identity changed; configure a new connection to preserve history isolation"
             )
-        self.state["identity"] = identity
-        self._save()
-        self.identity = account
         # Account capabilities are optional. Selected chats report the actual
         # network/conversation capabilities; send/react validate the destination again.
         capabilities = [(await self._chat(channel)).get("capabilities") or {} for channel in sorted(self.chat_ids)]
         if not capabilities:
             capabilities = [account.get("capabilities") or {}]
-        return {
+        self.check_result = {
             "id": "beeper:"
             + hashlib.sha256(json.dumps([self.base_url, self.network_account, identity]).encode()).hexdigest(),
             "name": account["user"].get("fullName") or account["user"].get("username") or account.get("network"),
@@ -119,6 +150,13 @@ class BeeperTransport:
                 "threads": any(caps.get("reply", 0) > 0 for caps in capabilities),
             },
         }
+        # Publish the identity only after every selected-chat read succeeded.
+        # A partial check must be retried as a whole before the engine can bind
+        # jobs or sources to this account.
+        self.state["identity"] = identity
+        self._save()
+        self.identity = account
+        return self.check_result
 
     async def _chat(self, channel, *, selected=True):
         if selected and channel not in self.chat_ids:
@@ -230,7 +268,11 @@ class BeeperTransport:
         for channel in self.chat_ids:
             selected.setdefault(channel, datetime.now(UTC).isoformat())
         self._save()
-        await self._reconcile()
+        if not self.recovering:
+            try:
+                await self._reconcile()
+            except TransientReadError:
+                self.recovering = "Beeper read temporarily failed; retrying automatically"
         self.task = asyncio.create_task(self._run())
 
     async def _reconcile(self):
@@ -307,10 +349,21 @@ class BeeperTransport:
                 self._save()  # Advance only after core acceptance and outbound suppression.
 
     async def _run(self):
+        retry_delay = 1
         try:
             while True:
                 await asyncio.sleep(5)
-                await self._reconcile()
+                try:
+                    if self.recovering and not self.check_result:
+                        await self._check_remote()
+                    await self._reconcile()
+                except TransientReadError:
+                    self.recovering = "Beeper read temporarily failed; retrying automatically"
+                    await asyncio.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, 60)
+                    continue
+                retry_delay = 1
+                self.recovering = ""
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 - report safe boundary error without provider payloads or credentials

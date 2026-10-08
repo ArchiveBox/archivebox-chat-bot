@@ -124,14 +124,23 @@ class Engine:
                     for field, channel in (await bot.setup_channels()).items():
                         setattr(self.connection, field, channel)
                     self.store.save_settings(self.settings)
-                await bot.start(self.receive)
-                self.bind_source(role)
-                self.connections[role] = {"ok": True, "capabilities": getattr(bot, "capabilities", {})}
+                result = await bot.start(self.receive)
+                state = result.get("state", "connected") if isinstance(result, dict) else "connected"
+                connected = state == "connected"
+                if connected:
+                    self.bind_source(role)
+                self.connections[role] = {
+                    "ok": connected,
+                    **({"state": state} if state != "connected" else {}),
+                    **({"error": result.get("detail"), "detail": result.get("detail")} if not connected else {}),
+                    "capabilities": getattr(bot, "capabilities", {}),
+                }
                 self.store.event(
                     "connection",
-                    "Connected",
+                    "Connected" if connected else (result.get("detail") or "Connection recovering"),
                     connection=self.connection.id,
                     role=role,
+                    level="info" if connected else "warning",
                     elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
                 )
             except Exception as exc:

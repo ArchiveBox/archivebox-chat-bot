@@ -558,8 +558,16 @@ async function handle(req: RequestMessage) {
     for (const config of desired.values()) {
       const existing = accounts.get(config.id);
       if (existing) {
-        result[config.id] = existing.check();
-        continue;
+        const status = existing.check();
+        if (status.state !== "error") {
+          result[config.id] = status;
+          continue;
+        }
+        // Save & Connect is the user's explicit recovery action for a failed
+        // account. Recreate the SDK client from its persisted session even
+        // when the connection settings themselves did not change.
+        await existing.close();
+        accounts.delete(config.id);
       }
       const account = new Account(config);
       accounts.set(config.id, account);
