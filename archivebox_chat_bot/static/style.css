@@ -133,9 +133,9 @@ main {
   width: calc(100% - 248px);
 }
 header {
-  height: 77px;
+  min-height: 54px;
   border-bottom: 1px solid var(--line);
-  padding: 0 46px;
+  padding: 10px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -158,14 +158,14 @@ header a {
 .content {
   max-width: 1470px;
   margin: auto;
-  padding: 38px 46px 0;
+  padding: 20px 24px 0;
 }
 .page-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin: 0 0 29px;
+  margin: 0 0 16px;
 }
 .eyebrow {
   font-size: 9px;
@@ -176,10 +176,10 @@ header a {
 }
 h1 {
   font-weight: 500;
-  font-size: 39px;
+  font-size: 25px;
   line-height: 1.16;
-  letter-spacing: -1.6px;
-  margin: 0 0 15px;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
 }
 p {
   color: var(--muted);
@@ -226,15 +226,14 @@ h3 {
   gap: 14px;
 }
 .section-title > span {
-  font-size: 8px;
-  letter-spacing: 1.5px;
+  font-size: 11px;
   color: #899581;
 }
 .panel {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 23px;
+  padding: 16px;
 }
 footer {
   display: flex;
@@ -263,7 +262,7 @@ button:not(.nav, .text-button),
   display: flex;
   gap: 13px;
   align-items: center;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
 }
 .panel-heading p {
   font-size: 11px;
@@ -282,8 +281,8 @@ button:not(.nav, .text-button),
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 22px 28px;
-  margin: 20px 0;
+  gap: 12px 20px;
+  margin: 12px 0;
 }
 label {
   display: flex;
@@ -350,7 +349,7 @@ summary {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #edf0e6;
-  padding: 19px 0;
+  padding: 10px 0;
 }
 .toggle-row:last-child {
   border: 0;
@@ -390,7 +389,7 @@ summary {
   transform: translateX(15px);
 }
 .job {
-  padding: 18px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #edf0e6;
   display: flex;
   gap: 16px;
@@ -433,7 +432,7 @@ summary {
   color: #a7593c;
 }
 .empty {
-  padding: 60px;
+  padding: 20px;
   text-align: center;
   color: #87937c;
 }
@@ -467,19 +466,34 @@ summary {
   border-radius: 15px;
   box-shadow: 0 20px 70px #17372e0c;
 }
-.brand-mark {
-  background: #17392f;
-  color: #d6efb4;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  width: 50px;
-  height: 50px;
-  font-size: 33px;
+.login-brand {
+  text-align: center;
   margin-bottom: 24px;
 }
-.login-card h1 {
-  font-size: 33px;
+.login-brand h2 {
+  font-size: 28px;
+  margin: 12px 0 4px;
+}
+.login-brand h3 {
+  font-size: 18px;
+  font-weight: 400;
+}
+.login-card hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 24px 0 16px;
+}
+.login-footer, .login-card .server-status {
+  display: block;
+  text-align: center;
+}
+.login-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.login-card .server-status {
+  margin-top: 12px;
 }
 .login-card label {
   margin: 25px 0 17px;
@@ -496,10 +510,10 @@ summary {
 }
 @media (min-width: 1450px) {
   .content {
-    padding-top: 48px;
+    padding-top: 24px;
   }
   .page-heading {
-    margin-bottom: 35px;
+    margin-bottom: 16px;
   }
 }
 @media (max-width: 1100px) {
@@ -618,8 +632,8 @@ nav {
 .provider-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 22px 0;
+  gap: 8px;
+  margin: 12px 0;
 }
 .provider-card {
   position: relative;
@@ -627,20 +641,20 @@ nav {
   background: white !important;
   color: var(--ink) !important;
   border: 1px solid var(--line) !important;
-  padding: 23px !important;
+  padding: 12px !important;
   display: flex !important;
   flex-direction: column;
-  gap: 10px;
-  border-radius: 12px !important;
-  min-height: 147px;
+  gap: 4px;
+  border-radius: 7px !important;
+  min-height: 86px;
 }
 .provider-card:hover {
   border-color: #729a58 !important;
   background: #fafff4 !important;
 }
 .provider-icon {
-  font-size: 28px;
-  height: 38px;
+  font-size: 20px;
+  height: 24px;
 }
 .provider-card strong {
   font-size: 15px;
@@ -661,7 +675,7 @@ nav {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--line);
-  padding: 20px 0;
+  padding: 10px 0;
 }
 .connection-row p {
   margin: 4px 0;
@@ -790,14 +804,14 @@ button:disabled {
   margin-left: auto;
 }
 .page-heading h1 {
-  font-size: 38px;
-  letter-spacing: -1px;
+  font-size: 25px;
+  letter-spacing: -0.5px;
 }
 .page-heading p {
-  font-size: 14px;
+  font-size: 12px;
 }
 .section-title {
-  margin-top: 35px;
+  margin-top: 18px;
 }
 @media (max-width: 1100px) {
   .provider-grid {
@@ -931,6 +945,60 @@ dialog:has(.setup-guide[open]) {
 .guide-step .guide-warning {
   color: #866422;
   margin-top: 8px;
+}
+.header-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 16px;
+}
+.server-status {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #476c47;
+}
+.server-status.offline, .event-error {
+  color: #a33131;
+}
+.event-warning {
+  color: #895812;
+}
+.event-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.event-controls select {
+  width: 130px;
+}
+.event-scroll {
+  overflow: auto;
+  max-height: 540px;
+  margin-bottom: 12px;
+}
+.event-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.event-table th, .event-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.event-table th {
+  position: sticky;
+  top: 0;
+  background: #f6f7f2;
+}
+.event-table td:first-child, .event-table td:nth-child(5), .event-table td:last-child {
+  white-space: nowrap;
+}
+.jobs-heading {
+  margin: 20px 0 12px;
 }
 @media (max-width: 900px) {
   .guided-setup .guide-steps {

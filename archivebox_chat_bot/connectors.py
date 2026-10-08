@@ -68,6 +68,9 @@ class ConnectorWorker:
                     task = asyncio.create_task(self.deliver(data))
                     self.deliveries.add(task)
                     task.add_done_callback(self.deliveries.discard)
+        except Exception:
+            log.exception("Chat connector event parsing failed")
+            raise
         finally:
             for account in self.receivers:
                 self.status[account] = {"state": "error", "detail": "Chat connector stopped; reconnect this account"}

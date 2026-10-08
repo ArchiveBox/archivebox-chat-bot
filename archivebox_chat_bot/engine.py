@@ -3,6 +3,7 @@ import contextlib
 import hashlib
 import json
 import logging
+import time
 import uuid
 from datetime import datetime, timedelta
 
@@ -102,6 +103,10 @@ class Engine:
         for role in ("capture", "ai"):
             if not getattr(self.connection, role).enabled:
                 continue
+            started = time.perf_counter()
+            self.store.event(
+                "connection", f"Connecting {self.connection.platform}", connection=self.connection.id, role=role
+            )
             try:
                 bot = self.adapters.create(self.connection, role, self.settings)
                 self.bots[role] = bot
@@ -121,9 +126,17 @@ class Engine:
                 await bot.start(self.receive)
                 self.bind_source(role)
                 self.connections[role] = {"ok": True, "capabilities": getattr(bot, "capabilities", {})}
+                self.store.event(
+                    "connection",
+                    "Connected",
+                    connection=self.connection.id,
+                    role=role,
+                    elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+                )
             except Exception as exc:
-                log.exception("Bot connection failed")
+                log.exception("%s:%s connection failed", self.connection.id, role)
                 self.connections[role] = {"ok": False, "error": safe_error(exc)}
+                self.store.event("connection", safe_error(exc), level="error", connection=self.connection.id, role=role)
         self.loop = asyncio.create_task(self.run())
 
     async def close(self):
@@ -142,6 +155,7 @@ class Engine:
         await self.archive.close()
         self.bots.clear()
         self.connections.clear()
+        self.store.event("connection", "Disconnected", connection=self.connection.id)
 
     def permitted(self, message):
         s = self.connection
@@ -184,13 +198,28 @@ class Engine:
             raise RuntimeError("The connected bot identity is not available yet")
         message.connection = self.connection.id
         self.store.remember(self.connection.id, message)
-        if self.permitted(message):
-            self.store.enqueue(
+        permitted = self.permitted(message)
+        if message.command and not message.is_bot:
+            self.store.event(
+                "command",
+                f"/{message.command} · {'accepted' if permitted else 'ignored by permissions'} · channel {message.channel} · user {message.user}",
+                connection=self.connection.id,
+                role=message.role,
+            )
+        if permitted:
+            inserted = self.store.enqueue(
                 self.scope(message.role) + ":" + message.key,
                 "message",
                 message.as_dict(),
                 scope=self.scope(message.role),
             )
+            if inserted:
+                self.store.event(
+                    "message",
+                    f"Queued {message.role} message · channel {message.channel} · user {message.user}",
+                    connection=self.connection.id,
+                    role=message.role,
+                )
             return True
         return False
 

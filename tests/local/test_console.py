@@ -1,10 +1,52 @@
 import pytest
 
+from archivebox_chat_bot.config import PLATFORMS
+
 
 def login(client):
     response = client.post("/auth/login", json={"password": "test-console-password-123"})
     assert response.status_code == 200
     client.headers["x-csrf-token"] = response.json()["csrf"]
+
+
+def test_activity_records_auth_setup_and_parse_errors_without_secrets(console):
+    assert console.get("/api/events").status_code == 401
+    assert console.post("/auth/login", json={"password": "private-wrong-password"}).status_code == 401
+    login(console)
+    response = console.put("/api/settings", content='{"archivebox_token":"private-broken-json"')
+    assert response.status_code == 400
+    assert (
+        console.put("/api/settings", json={"connections": [{"id": "incomplete", "platform": "slack"}]}).status_code
+        == 200
+    )
+    assert console.post("/api/check/chat", params={"connection_id": "absent"}).status_code == 400
+    response = console.get("/api/events")
+    assert response.status_code == 200
+    events = response.json()["events"]
+    assert any(e["status_code"] == 401 and "Incorrect password" in e["message"] for e in events)
+    assert any(e["status_code"] == 400 and "JSON" in e["message"] for e in events)
+    assert any(e["kind"] == "connection" and "Connecting" in e["message"] for e in events)
+    assert any(e["level"] == "error" and "xoxb-" in e["message"] for e in events)
+    assert any(e["kind"] == "settings" for e in events)
+    assert all(e["elapsed_ms"] is None or e["elapsed_ms"] >= 0 for e in events)
+    assert "private-wrong-password" not in response.text and "private-broken-json" not in response.text
+
+
+def test_multiple_connections_of_every_provider_persist_and_edit_independently(console):
+    login(console)
+    connections = [
+        {"id": f"{platform}-{number}", "platform": platform, "name": f"{platform} {number}", "enabled": False}
+        for platform in PLATFORMS
+        for number in (1, 2)
+    ]
+    assert console.put("/api/settings", json={"connections": connections}).status_code == 200
+    saved = console.get("/api/state").json()["settings"]["connections"]
+    assert {c["id"] for c in saved} == {c["id"] for c in connections}
+    saved[0]["name"] = "Changed independently"
+    assert console.put("/api/settings", json={"connections": saved}).status_code == 200
+    actual = console.get("/api/state").json()["settings"]["connections"]
+    assert actual[0]["name"] == "Changed independently"
+    assert actual[1:] == saved[1:]
 
 
 def test_admin_login_csrf_redaction_and_persisted_settings(console):

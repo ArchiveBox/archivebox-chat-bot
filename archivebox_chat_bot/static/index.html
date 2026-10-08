@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Chatbot Admin Console · ArchiveBox</title>
+    <link rel="icon" href="https://archivebox.io/icon.png" />
     <link rel="stylesheet" href="/static/style.css" />
     <script src="/static/guides.js" defer></script>
     <script src="/static/app.js" defer></script>
@@ -11,8 +12,11 @@
   <body>
     <section id="login" class="login-screen">
       <form id="login-form" class="login-card">
-        <div class="brand-mark">▤</div>
-        <h1>Your archive.<br />Your conversations.</h1>
+        <div class="login-brand">
+          <img src="https://archivebox.io/icon.png" width="72" height="72" alt="ArchiveBox logo" />
+          <h2>ArchiveBox</h2>
+          <h3>Chatbot Admin Console</h3>
+        </div>
         <p id="login-description">Sign in to connect your bots.</p>
         <label
           >Chatbot Admin Console password<input
@@ -24,12 +28,15 @@
             id="confirm-password" type="password" autocomplete="new-password" /></label>
         <button id="login-submit">Open Chatbot Admin Console →</button>
         <p id="login-error" role="alert"></p>
+        <hr />
+        <small class="login-footer"><a href="https://github.com/ArchiveBox/archivebox-chat-bot" target="_blank" rel="noreferrer"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg> GitHub · archivebox-chat-bot</a></small>
+        <small class="server-status" data-server-status role="status">Console: checking…</small>
       </form>
     </section>
     <div id="console" class="shell" hidden>
       <aside>
         <div class="brand">
-          ▤ <span>ArchiveBox<small>Chatbot Admin Console</small></span>
+          <img src="https://archivebox.io/icon.png" width="36" height="36" alt="" /> <span>ArchiveBox<small>Chatbot Admin Console</small></span>
         </div>
         <nav>
           <button class="nav active" data-tab="connections">
@@ -53,22 +60,20 @@
           <span class="breadcrumb"
             >ArchiveBox <span>/</span
             ><strong id="page-name">Connections</strong></span
-          ><span id="connection-badge" class="badge">Getting connected</span>
+          ><div class="header-status"><span class="server-status" data-server-status role="status">Console: checking…</span><span id="connection-badge" class="badge">Loading connections…</span></div>
         </header>
         <div class="content">
           <section id="page-connections" class="page">
             <div class="page-heading">
               <div>
-                <span class="eyebrow">START HERE</span>
-                <h1>Connect your conversations.</h1>
-                <p>One archive. Two bots. All your favorite places.</p>
+                <h1>Connections</h1>
               </div>
             </div>
             <form id="archive-form" class="panel">
               <div class="panel-heading">
-                <div class="app-icon small-icon">▤</div>
+                <img class="small-icon" src="https://archivebox.io/icon.png" alt="" />
                 <div>
-                  <h2>1. Your ArchiveBox</h2>
+                  <h2>ArchiveBox server</h2>
                   <p id="archive-status">Bring your server URL and API key.</p>
                 </div>
                 <button id="check-archive">Connect ArchiveBox →</button>
@@ -120,8 +125,8 @@
               </details>
             </form>
             <div class="section-title">
-              <h2>2. Choose your chat apps</h2>
-              <span>Add as many as you like.</span>
+              <h2>Add connection</h2>
+              <span>Multiple accounts and servers per provider supported.</span>
             </div>
             <div id="providers" class="provider-grid"></div>
             <div id="connected" class="connection-list"></div>
@@ -129,7 +134,6 @@
           <section id="page-capture" class="page" hidden>
             <div class="page-heading">
               <div>
-                <span class="eyebrow">SAVE WHAT MATTERS</span>
                 <h1>ArchiveBox Bot</h1>
                 <p>
                   Share links, save a conversation, browse completed snapshots.
@@ -155,25 +159,12 @@
           <section id="page-ai" class="page" hidden>
             <div class="page-heading">
               <div>
-                <span class="eyebrow">YOUR EXISTING AGENT</span>
                 <h1>ArchiveBox AI Bot</h1>
                 <p>
-                  Research, capture, organize, and verify with your ArchiveBox
+                  Capture, organize, and verify with your ArchiveBox
                   agent.
                 </p>
               </div>
-            </div>
-            <div class="panel">
-              <h2>✧ Put your archive to work</h2>
-              <p>
-                “Find the caching guides we saved, capture the missing
-                references, tag them http-cache-research, and verify the
-                outputs.”
-              </p>
-              <p class="muted">
-                Sessions open in ArchiveBox → Agent. Uses your configured
-                providers and tools.
-              </p>
             </div>
             <div id="ai-connections"></div>
             <form id="ai-form" class="panel">
@@ -191,13 +182,22 @@
           <section id="page-activity" class="page" hidden>
             <div class="page-heading">
               <div>
-                <span class="eyebrow">LIVE ACTIVITY</span>
-                <h1>From conversation to collection.</h1>
+                <h1>Activity</h1>
                 <p id="queue-summary"></p>
               </div>
               <button id="refresh" class="secondary">Refresh</button>
             </div>
             <div id="runtime-error" class="inline-note" hidden></div>
+            <section class="panel activity-panel">
+              <div class="section-title"><h2>Events</h2><span id="event-count"></span></div>
+              <div class="event-controls">
+                <input id="event-search" type="search" placeholder="Filter events, connections, errors…" aria-label="Filter events" />
+                <select id="event-level" aria-label="Event severity"><option value="">All levels</option><option value="error">Errors</option><option value="warning">Warnings</option><option value="info">Info</option></select>
+              </div>
+              <div class="event-scroll"><table class="event-table"><thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Event</th><th>HTTP</th><th>Duration</th></tr></thead><tbody id="events"></tbody></table></div>
+              <button id="older-events" type="button" class="secondary">Load older events</button>
+            </section>
+            <h2 class="jobs-heading">Jobs</h2>
             <div id="jobs" class="panel"></div>
             <form id="password-form" class="panel">
               <details>

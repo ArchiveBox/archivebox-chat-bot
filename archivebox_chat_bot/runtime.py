@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import logging
+import time
 
 from .archivebox import ArchiveBox
 from .connectors import Adapters
@@ -21,6 +22,51 @@ class Runtime:
         self.connections = {}
         self.error = ""
         self.lock = asyncio.Lock()
+        self.monitor_task = None
+        self.last_status = {}
+
+    async def check_archive(self):
+        previous = self.connections.get("archivebox", {})
+        try:
+            result = await asyncio.wait_for(self.archive.check(), timeout=8)
+        except Exception as exc:
+            log.exception("ArchiveBox connection check failed")
+            result = {"ok": False, "error": safe_error(exc), "checked_at": time.time()}
+        self.connections["archivebox"] = result
+        if (previous.get("ok"), previous.get("error")) != (result.get("ok"), result.get("error")):
+            self.store.event(
+                "connection",
+                "ArchiveBox connected" if result["ok"] else f"ArchiveBox: {result['error']}",
+                level="info" if result["ok"] else "error",
+                elapsed_ms=result.get("latency_ms"),
+            )
+
+    async def monitor(self):
+        checked = time.monotonic()
+        while True:
+            await asyncio.sleep(5)
+            if self.settings.archivebox_token and time.monotonic() - checked >= 30:
+                await self.check_archive()
+                checked = time.monotonic()
+            for connection, status in self.status()["chat"].items():
+                for role, state in status["roles"].items():
+                    identity = (connection, role)
+                    value = (state.get("ok"), state.get("state"), state.get("error"), state.get("detail"))
+                    if self.last_status.get(identity) != value:
+                        self.last_status[identity] = value
+                        detail = (
+                            state.get("error")
+                            or state.get("detail")
+                            or state.get("state")
+                            or ("Connected" if state.get("ok") else "Disconnected")
+                        )
+                        self.store.event(
+                            "connection",
+                            detail,
+                            connection=connection,
+                            role=role,
+                            level="info" if state.get("ok") else "warning",
+                        )
 
     async def initialize(self):
         async with self.lock:
@@ -31,11 +77,7 @@ class Runtime:
         self.settings = settings
         self.archive = ArchiveBox(settings)
         if settings.archivebox_token:
-            try:
-                self.connections["archivebox"] = await asyncio.wait_for(self.archive.check(), timeout=8)
-            except Exception as exc:
-                log.exception("ArchiveBox connection failed")
-                self.connections["archivebox"] = {"ok": False, "error": safe_error(exc)}
+            await self.check_archive()
         self.adapters = Adapters(self.store)
         try:
             await self.adapters.configure(settings)
@@ -47,6 +89,7 @@ class Runtime:
                 engine = Engine(self.store, settings, connection, self.adapters)
                 self.engines[connection.id] = engine
                 await engine.start()
+        self.monitor_task = asyncio.create_task(self.monitor())
 
     @property
     def scopes(self):
@@ -76,6 +119,10 @@ class Runtime:
         return {**self.connections, "chat": connections}
 
     async def close(self):
+        if self.monitor_task:
+            self.monitor_task.cancel()
+            await asyncio.gather(self.monitor_task, return_exceptions=True)
+            self.monitor_task = None
         for engine in self.engines.values():
             with contextlib.suppress(Exception):
                 await engine.close()
@@ -84,6 +131,7 @@ class Runtime:
         await self.archive.close()
         self.connections.clear()
         self.error = ""
+        self.last_status.clear()
 
     async def restart(self):
         async with self.lock:

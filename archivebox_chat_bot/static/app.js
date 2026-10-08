@@ -8,7 +8,10 @@ let csrf = "",
   beeperAccounts = [],
   beeperChats = [],
   beeperState = "",
-  discordSetup = null;
+  discordSetup = null,
+  eventRows = [],
+  refreshing = false,
+  probing = false;
 const providers = {
   beeper: {
     name: "Beeper",
@@ -143,6 +146,7 @@ function el(tag, text, cls) {
 }
 async function api(path, options = {}) {
   const r = await fetch(path, {
+    signal: AbortSignal.timeout(120000),
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -163,6 +167,25 @@ async function api(path, options = {}) {
     );
   }
   return data;
+}
+async function probeConsole() {
+  const started = performance.now();
+  let message, offline = false;
+  try {
+    const response = await fetch("/healthz", {cache: "no-store", signal: AbortSignal.timeout(8000)});
+    const ttfb = Math.round(performance.now() - started);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!(await response.json()).ok) throw new Error("Health check failed");
+    message = `Console: online · TTFB ${ttfb} ms · ${new Date().toLocaleTimeString()}`;
+  } catch (error) {
+    offline = true;
+    message = `Console: unreachable · ${error.name === "TimeoutError" ? "8 s timeout" : error.message}`;
+  }
+  document.querySelectorAll("[data-server-status]").forEach(node => {
+    node.textContent = message;
+    node.classList.toggle("offline", offline);
+    node.title = "Browser → console HTTP time to response headers. Checked every 8 seconds.";
+  });
 }
 function toast(text, error = false) {
   $("#toast").textContent = text;
@@ -290,6 +313,7 @@ function name(c) {
   return c.name || providers[c.platform].name;
 }
 function status(c, r) {
+  if (!c.enabled || !c[r].enabled) return {detail: "Disabled"};
   return current.connections.chat?.[c.id]?.roles?.[r] || {};
 }
 function statusText(s) {
@@ -313,6 +337,7 @@ function openTab(tab) {
     activity: "Activity",
   }[tab];
   location.hash = tab;
+  if (tab === "activity" && current) action(() => refreshEvents());
 }
 function updateLocalUrlWarning() {
   const form = $("#archive-form");
@@ -421,9 +446,10 @@ async function edit(id, r = "capture", platform) {
   editing = id
     ? structuredClone(current.settings.connections.find((c) => c.id === id))
     : {
-        id: crypto.randomUUID(),
+        // getRandomValues is also available on HTTP LAN/Tailscale addresses.
+        id: Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join(""),
         platform,
-        name: providers[platform].name,
+        name: providers[platform].name + (current.settings.connections.some(c => c.platform === platform) ? ` ${current.settings.connections.filter(c => c.platform === platform).length + 1}` : ""),
         enabled: true,
         options: platform === "irc" ? { port: 6697, tls: true } : platform === "beeper" ? { base_url: current.beeper_default_url } : {},
         capture: { enabled: true, options: platform === "email" ? {port: 993, tls_mode: "tls", folder: "INBOX", poll_seconds: 30, max_message_mb: 25} : {} },
@@ -832,7 +858,7 @@ async function saveConnection(close = true) {
 function renderJobs(jobs) {
   $("#jobs").replaceChildren();
   if (!jobs.length)
-    $("#jobs").append(el("p", "Send your first link to start.", "empty"));
+    $("#jobs").append(el("p", "No jobs.", "empty"));
   for (const job of jobs) {
     const row = el("div", undefined, "job"),
       main = el("div", undefined, "job-main");
@@ -865,9 +891,40 @@ function renderJobs(jobs) {
     $("#jobs").append(row);
   }
 }
+function renderEvents() {
+  const query = $("#event-search").value.toLowerCase(), level = $("#event-level").value;
+  const filtered = eventRows.filter(event => (!level || event.level === level) &&
+    `${event.kind} ${event.connection} ${event.role} ${event.message} ${event.status_code || ""}`.toLowerCase().includes(query));
+  $("#events").replaceChildren();
+  for (const event of filtered) {
+    const row = el("tr", undefined, `event-${event.level}`);
+    const time = el("td", new Date(event.created_at).toLocaleString());
+    const source = [event.connection, event.role].filter(Boolean).join(" / ") || event.kind;
+    row.append(time, el("td", event.level), el("td", source), el("td", event.message),
+      el("td", event.status_code || "—"), el("td", event.elapsed_ms == null ? "—" : `${Math.round(event.elapsed_ms)} ms`));
+    $("#events").append(row);
+  }
+  if (!filtered.length) {
+    const cell = el("td", "No matching events.", "empty");
+    cell.colSpan = 6;
+    const row = el("tr"); row.append(cell); $("#events").append(row);
+  }
+  $("#event-count").textContent = `${filtered.length} / ${eventRows.length} loaded · latest first`;
+}
+async function refreshEvents(older = false) {
+  const before = older && eventRows.length ? `?before=${eventRows.at(-1).id}` : "";
+  const {events} = await api("/api/events" + before);
+  if (!older && events.length === 200 && eventRows.length && events.at(-1).id > eventRows[0].id) eventRows = [];
+  eventRows = [...new Map([...eventRows, ...events].map(event => [event.id, event])).values()].sort((a,b) => b.id - a.id);
+  renderEvents();
+  if (older || eventRows.length <= 200) $("#older-events").hidden = events.length < 200;
+}
+$("#event-search").oninput = renderEvents;
+$("#event-level").onchange = renderEvents;
+$("#older-events").onclick = () => action(() => refreshEvents(true));
 async function refresh() {
   const previousStatus = editing && current ? JSON.stringify(status(editing, role)) : "";
-  const state = await api("/api/state");
+  const state = await api("/api/state", {signal: AbortSignal.timeout(10000)});
   current = state;
   csrf = state.csrf;
   $("#login").hidden = true;
@@ -884,16 +941,18 @@ async function refresh() {
           input.placeholder = "Connected · leave blank to keep";
       }
   $("#open-archive").href = state.settings.archivebox_public_url;
-  $("#archive-status").textContent = state.connections.archivebox?.ok
-    ? `Connected · ${state.connections.archivebox.snapshots} snapshots`
-    : state.connections.archivebox?.error ||
+  const archive = state.connections.archivebox || {};
+  $("#archive-status").textContent = archive.ok
+    ? `Online · ${archive.snapshots.toLocaleString()} snapshots · API ${Math.round(archive.latency_ms)} ms · checked ${new Date(archive.checked_at * 1000).toLocaleTimeString()}`
+    : archive.error ||
       "Bring your server URL and API key.";
+  $("#archive-status").title = "Console → ArchiveBox authenticated API round trip. Checked every 30 seconds.";
   const connected = Object.values(state.connections.chat || {}).filter((c) =>
     Object.values(c.roles).some((r) => r.ok),
   ).length;
   $("#connection-badge").textContent = connected
-    ? `${connected} chat connections`
-    : "Finish setup";
+    ? `${connected} / ${state.settings.connections.length} connections online`
+    : `${state.settings.connections.length} connections · none online`;
   $("#queue-summary").textContent =
     `${state.stats.done || 0} completed · ${(state.stats.waiting || 0) + (state.stats.running || 0) + (state.stats.agent_waiting || 0)} in progress · ${state.stats.uncertain || 0} need review`;
   $("#runtime-error").hidden = !state.error;
@@ -902,6 +961,7 @@ async function refresh() {
   renderJobs(state.jobs);
   updateLocalUrlWarning();
   if ($("#editor").open && !dirty && previousStatus !== JSON.stringify(status(editing, role))) renderEditor();
+  if (!$("#page-activity").hidden) await refreshEvents();
 }
 for (const [id, p] of Object.entries(providers)) {
   const b = button("", () => edit(null, "capture", id), "provider-card");
@@ -1005,6 +1065,8 @@ $("#logout").onclick = () =>
     await api("/auth/logout", { method: "POST" });
     $("#console").hidden = true;
     $("#login").hidden = false;
+    eventRows = [];
+    $("#events").replaceChildren();
   });
 $("#refresh").onclick = () => action(refresh);
 document
@@ -1028,7 +1090,16 @@ async function showLogin() {
   $("#confirm-password").required = firstRun;
   $("#login-error").textContent = "";
 }
+probeConsole();
 showLogin().then(() => refresh()).catch(() => {});
 setInterval(() => {
-  if (!$("#console").hidden) action(refresh);
+  if (document.hidden) return;
+  if (!probing) {
+    probing = true;
+    probeConsole().finally(() => probing = false);
+  }
+  if (!refreshing && !$("#console").hidden) {
+    refreshing = true;
+    action(refresh).finally(() => refreshing = false);
+  }
 }, 8000);

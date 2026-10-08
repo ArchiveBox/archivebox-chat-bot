@@ -383,7 +383,7 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 
 ## 🧠 ArchiveBox AI Bot
 
-- **DM / @mention** → research, capture, tag, organize, and verify.
+- **DM / @mention** → capture, tag, organize, and verify.
 - **Follow up** → include recent messages and previous replies.
 - **ArchiveBox → Agent** → inspect each new session and tool results.
 - **Existing OpenCode** → providers, credentials, tools, session database; tasks survive restarts.
@@ -406,7 +406,7 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 - **Shown:** plan → approval → capture HTTP caching references → tag and verify.
 
 <table>
-<tr><th width="50%">1 · Configure ArchiveBox AI Bot</th><th width="50%">2 · Complete a research task</th></tr>
+<tr><th width="50%">1 · Configure ArchiveBox AI Bot</th><th width="50%">2 · Complete an archive task</th></tr>
 <tr>
 <td width="50%" valign="top"><a href="screenshots/slack-ai-config.jpg"><img src="screenshots/slack-ai-config.jpg" width="100%" alt="Actual Slack App Home for ArchiveBox AI Bot"></a></td>
 <td width="50%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="Real Slack AI conversation planning, capturing, tagging, and verifying HTTP caching references"></a></td>
@@ -420,7 +420,7 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 #### Discord AI
 
 - **Connect:** create a second Discord app named **ArchiveBox AI Bot** → repeat the [Discord setup](#discord) → choose **Trusted people**.
-- **DM / mention:** research, capture, tag, and verify with your existing ArchiveBox agent; follow up in the same DM or thread.
+- **DM / mention:** capture, tag, and verify with your existing ArchiveBox agent; follow up in the same DM or thread.
 - **ArchiveBox → Agent:** open the session and its tool results.
 
 <details>
@@ -459,7 +459,7 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 - **Shown:** find a missing asyncio reference → capture it → answer from saved HTML.
 
 <table>
-<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Research archived sources</th></tr>
+<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Search archived sources</th></tr>
 <tr>
 <td width="50%" valign="top"><a href="screenshots/irc-ai-config.png"><img src="screenshots/irc-ai-config.png" width="100%" alt="Actual IRC AI bot configuration and trusted people settings"></a></td>
 <td width="50%" valign="top"><a href="screenshots/irc-ai.png"><img src="screenshots/irc-ai.png" width="100%" alt="Real IRC AI task capturing Queue documentation and explaining shutdown from saved HTML"></a></td>

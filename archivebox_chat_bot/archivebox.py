@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import time
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import NamedTuple
@@ -79,8 +80,15 @@ class ArchiveBox:
 
     async def check(self) -> dict:
         # Checking a protected endpoint verifies administrator authorization too.
+        started = time.perf_counter()
         page = await self.snapshots(limit=1)
-        return {"ok": True, "snapshots": page["total_items"], "url": self.settings.archivebox_public_url}
+        return {
+            "ok": True,
+            "snapshots": page["total_items"],
+            "url": self.settings.archivebox_public_url,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 1),
+            "checked_at": time.time(),
+        }
 
     async def add(self, urls: list[str], tags: list[str]) -> dict:
         result = await self._request(

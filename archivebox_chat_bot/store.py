@@ -2,12 +2,13 @@
 
 import json
 import os
+import re
 import sqlite3
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .config import Settings, public_settings
+from .config import Settings, is_secret, public_settings
 
 
 def now():
@@ -25,6 +26,10 @@ class Store:
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL,
+                level TEXT NOT NULL, kind TEXT NOT NULL, connection TEXT NOT NULL, role TEXT NOT NULL,
+                message TEXT NOT NULL, status_code INTEGER, elapsed_ms REAL);
             CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL, scope TEXT NOT NULL DEFAULT '',
                 state TEXT NOT NULL DEFAULT 'queued', result TEXT NOT NULL DEFAULT '{}',
@@ -65,6 +70,49 @@ class Store:
 
     def public_settings(self):
         return public_settings(self.settings().model_dump())
+
+    def redact(self, message):
+        def secrets(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if is_secret(key) and isinstance(item, str) and item:
+                        yield item
+                    else:
+                        yield from secrets(item)
+            elif isinstance(value, list):
+                for item in value:
+                    yield from secrets(item)
+
+        text = str(message)
+        values = set(secrets(self.settings().model_dump()))
+        if os.environ.get("ADMIN_PASSWORD"):
+            values.add(os.environ["ADMIN_PASSWORD"])
+        for value in sorted(values, key=len, reverse=True):
+            text = text.replace(value, "[redacted]")
+        # Errors may contain credentials in URLs or authorization headers.
+        text = re.sub(r"(?i)(https?://)[^\s/@]+:[^\s/@]+@", r"\1[redacted]@", text)
+        text = re.sub(r"(?i)([?&](?:token|key|secret|password|code|access_token)=)[^\s&#]+", r"\1[redacted]", text)
+        text = re.sub(r"(?i)\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]+=*", r"\1 [redacted]", text)
+        return text[:2000]
+
+    def event(self, kind, message, *, level="info", connection="", role="", status_code=None, elapsed_ms=None):
+        message = self.redact(message)
+        with self.db:
+            self.db.execute(
+                "INSERT INTO events(created_at,level,kind,connection,role,message,status_code,elapsed_ms) "
+                "VALUES(?,?,?,?,?,?,?,?)",
+                (now(), level, kind, connection, role, message, status_code, elapsed_ms),
+            )
+            self.db.execute("DELETE FROM events WHERE id <= (SELECT MAX(id)-10000 FROM events)")
+
+    def events(self, limit=200, before=None):
+        return [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT * FROM events WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT ?",
+                (before, before, min(max(limit, 1), 500)),
+            ).fetchall()
+        ]
 
     def bind_identity(self, connection: str, role: str, fingerprint: str):
         """Bind verified source identity before reading policy/history or remembering.

@@ -1,3 +1,4 @@
+from archivebox_chat_bot.config import Settings
 from archivebox_chat_bot.store import Store
 from archivebox_chat_bot.text import extract_urls, submission_tags, submitter_tag
 
@@ -32,6 +33,23 @@ def test_durable_event_deduplication_and_ambiguous_restart(tmp_path):
     assert reopened.get("slack:capture:C:1")["state"] == "uncertain"
     assert reopened.get("slack:capture:C:1")["result"]["session"]["id"] == "persisted-session"
     assert not reopened.jobs("queued")
+    reopened.close()
+
+
+def test_activity_redacts_credentials_and_survives_restart(tmp_path):
+    store = Store(tmp_path)
+    store.save_settings(Settings(archivebox_token="actual-private-token"))
+    store.event("connection", "Failed actual-private-token https://user:pass@example.org/?access_token=also-private")
+    store.event("http", "Bearer header-secret", level="error", status_code=500, elapsed_ms=12.5)
+    store.close()
+    reopened = Store(tmp_path)
+    events = reopened.events()
+    assert len(events) == 2 and events[0]["status_code"] == 500
+    assert events[0]["elapsed_ms"] == 12.5
+    assert "actual-private-token" not in str(events) and "also-private" not in str(events)
+    assert "user:pass" not in str(events) and "header-secret" not in str(events)
+    assert "[redacted]" in events[0]["message"]
+    assert reopened.events(before=events[0]["id"]) == events[1:]
     reopened.close()
 
 

@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
@@ -11,11 +12,14 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 from slack_sdk.signature import SignatureVerifier
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .activity import ActivityHandler
 from .archivebox import ArchiveBox
 from .config import Settings, merge_settings
 from .engine import safe_error
@@ -48,11 +52,18 @@ def create_app(directory=None):
 
     @asynccontextmanager
     async def lifespan(app):
+        handler = ActivityHandler(store)
+        logger = logging.getLogger("archivebox_chat_bot")
+        logger.addHandler(handler)
+        store.event("service", "Chatbot started")
         startup = asyncio.create_task(engine.initialize())
         yield
         startup.cancel()
         await asyncio.gather(startup, return_exceptions=True)
         await engine.close()
+        logger.removeHandler(handler)
+        await asyncio.sleep(0)  # Finish queued SDK log writes before closing SQLite.
+        store.event("service", "Chatbot stopped")
         store.close()
 
     app = FastAPI(title="Chatbot Admin Console", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
@@ -60,17 +71,50 @@ def create_app(directory=None):
 
     @app.middleware("http")
     async def headers(request, call_next):
-        response = await call_next(request)
+        started = time.perf_counter()
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            logging.getLogger(__name__).exception("Console request failed")
+            request.state.activity_detail = f"{type(exc).__name__}: {safe_error(exc)}"
+            response = JSONResponse({"detail": "Server error. See Activity for details."}, status_code=500)
+        if response.status_code >= 400 or request.method not in ("GET", "HEAD", "OPTIONS"):
+            # Route templates exclude query strings, credentials and arbitrary request bodies.
+            route = getattr(request.scope.get("route"), "path", "unmatched route")
+            detail = getattr(request.state, "activity_detail", "")
+            store.event(
+                "http",
+                f"{request.method} {route}" + (f" — {detail}" if detail else ""),
+                level="error" if response.status_code >= 500 else "warning" if response.status_code >= 400 else "info",
+                status_code=response.status_code,
+                elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+            )
         response.headers.update(
             {
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",
                 "Referrer-Policy": "no-referrer",
                 "Cache-Control": "no-store",
-                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://archivebox.io; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
             }
         )
         return response
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request, exc):
+        request.state.activity_detail = store.redact(exc.detail)
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers)
+
+    @app.exception_handler(json.JSONDecodeError)
+    async def json_error(request, exc):
+        request.state.activity_detail = f"Invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        return JSONResponse({"detail": request.state.activity_detail}, status_code=400)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, exc):
+        details = [{"field": ".".join(map(str, e["loc"])), "message": e["msg"]} for e in exc.errors()]
+        request.state.activity_detail = store.redact(details)
+        return JSONResponse({"detail": details}, status_code=422)
 
     def verify_origin(request):
         origin = request.headers.get("origin", "")
@@ -196,6 +240,10 @@ def create_app(directory=None):
             else "http://127.0.0.1:23373",
         }
 
+    @app.get("/api/events")
+    async def events(limit: int = 200, before: int | None = None, session=admin_session):
+        return {"events": store.events(limit=limit, before=before)}
+
     @app.put("/api/settings")
     async def save_settings(request: Request, session=admin_session):
         data = await request.json()
@@ -206,6 +254,7 @@ def create_app(directory=None):
                 422, [{"field": ".".join(map(str, e["loc"])), "message": e["msg"]} for e in exc.errors()]
             ) from exc
         store.save_settings(settings)
+        store.event("settings", f"Configuration saved · {len(settings.connections)} connections")
         await engine.restart()
         return {"ok": True, "settings": store.public_settings()}
 
@@ -225,6 +274,13 @@ def create_app(directory=None):
     @app.post("/api/check/{service}")
     async def check(service: str, connection_id: str = "default", role: str = "capture", session=admin_session):
         client = None
+        started = time.perf_counter()
+        store.event(
+            "connection",
+            f"Checking {service}",
+            connection=connection_id if service == "chat" else "",
+            role=role if service == "chat" else "",
+        )
         try:
             if service == "archivebox":
                 client = ArchiveBox(store.settings())
@@ -236,8 +292,15 @@ def create_app(directory=None):
                 raise ValueError("Unknown service")
             return {"ok": result.get("state", "connected") == "connected", **result}
         except Exception as exc:
+            if service == "archivebox":
+                engine.connections["archivebox"] = {"ok": False, "error": safe_error(exc), "checked_at": time.time()}
             raise HTTPException(400, safe_error(exc)) from exc
         finally:
+            store.event(
+                "connection",
+                f"Finished checking {service}",
+                elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+            )
             if client:
                 await client.close()
 
