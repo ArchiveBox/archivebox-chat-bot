@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>ArchiveBox Chat Bot</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/guides.js" defer></script>
     <script src="/static/app.js" defer></script>
   </head>
   <body>
@@ -236,10 +237,13 @@
             <span id="editor-provider" class="eyebrow"></span>
             <h2 id="editor-title"></h2>
           </div>
-          <button type="button" id="close-editor" class="secondary">✕</button>
+          <button type="button" id="close-editor" class="secondary" aria-label="Close provider setup">✕</button>
         </div>
         <div id="editor-status" class="inline-note"></div>
-        <div id="editor-fields"></div>
+        <div class="editor-layout">
+          <details id="setup-guide" class="setup-guide"></details>
+          <div id="editor-fields"></div>
+        </div>
         <div class="dialog-actions">
           <button type="button" id="remove-connection" class="secondary">
             Disconnect</button

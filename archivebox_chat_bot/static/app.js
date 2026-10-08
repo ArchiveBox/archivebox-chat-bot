@@ -391,6 +391,7 @@ async function edit(id, r = "capture", platform) {
       };
   editing.people = [];
   dirty = false;
+  $("#setup-guide").open = !id || !status(editing, r).ok;
   renderEditor();
   $("#editor").showModal();
   if (id) {
@@ -406,11 +407,76 @@ async function edit(id, r = "capture", platform) {
     if (!dirty && $("#editor").open) renderEditor();
   }
 }
+function renderSetupGuide() {
+  const platform = editing.platform,
+    account = editing[role],
+    variant = ["whatsapp", "messenger"].includes(platform)
+      ? `${platform}-${account.options.transport || (platform === "whatsapp" ? "agent" : "page")}`
+      : platform,
+    guide = $("#setup-guide"),
+    steps = el("ol", undefined, "guide-steps"),
+    bot = role === "ai" ? "ArchiveBox AI Bot" : "ArchiveBox Bot";
+  guide.replaceChildren(el("summary", `How to connect ${providers[platform].name}`), steps);
+  for (const step of setupGuides[variant]) {
+    const item = el("li"), content = el("div", undefined, "guide-step");
+    content.append(el("h3", step.title), el("p", step.text.replaceAll("{bot}", bot)));
+    const file = role === "ai" && step.aiImage ? step.aiImage : step.image;
+    if (file) {
+      const figure = el("figure"), zoom = el("a"), img = el("img");
+      zoom.href = `/static/guides/${file}`;
+      zoom.target = "_blank";
+      zoom.rel = "noreferrer";
+      zoom.title = "Open full-size setup screenshot";
+      img.src = zoom.href;
+      img.alt = step.caption;
+      img.loading = "lazy";
+      zoom.append(img);
+      const caption = el("figcaption", step.caption);
+      const enlarge = el("a", "Enlarge ↗");
+      enlarge.href = zoom.href;
+      enlarge.target = "_blank";
+      enlarge.rel = "noreferrer";
+      caption.append(" · ", enlarge);
+      if (step.source) {
+        const source = el("a", "Source ↗");
+        source.href = step.source;
+        source.target = "_blank";
+        source.rel = "noreferrer";
+        caption.append(" · ", source);
+      }
+      figure.append(zoom, caption);
+      content.append(figure);
+    }
+    if (step.webhook) {
+      const base = current.settings.public_url || location.origin,
+        callback = `${base.replace(/\/$/, "")}/connections/${editing.id}/${role}/webhook`;
+      content.append(el("code", callback, "guide-callback"));
+      content.append(button("Copy callback URL", async () => {
+        await navigator.clipboard.writeText(callback);
+        toast("Callback URL copied");
+      }));
+      if (!base.startsWith("https://"))
+        content.append(el("p", "Set the console's public HTTPS URL in Connections before registering this callback.", "guide-warning"));
+    }
+    const docs = el("div", undefined, "guide-docs");
+    for (const [title, url] of step.docs || []) {
+      const a = el("a", `${title} ↗`);
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+      docs.append(a);
+    }
+    content.append(docs);
+    item.append(content);
+    steps.append(item);
+  }
+}
 function renderEditor() {
   const p = providers[editing.platform],
     account = editing[role],
     box = $("#editor-fields");
   box.replaceChildren();
+  renderSetupGuide();
   $("#editor-provider").textContent = p.name;
   $("#editor-title").textContent =
     role === "ai" ? "ArchiveBox AI Bot" : "ArchiveBox Bot";
@@ -422,7 +488,8 @@ function renderEditor() {
   box.append(base);
   field(base, ["name", "Connection name"], editing);
   field(base, ["enabled", "Connect this bot", "checkbox"], account);
-  for (const f of p.shared || []) field(base, f, editing.options);
+  for (const f of p.shared || [])
+    field(base, f, Object.hasOwn(account.options, f[0]) ? account.options : editing.options);
   const guide = el("div", undefined, "button-row");
   box.append(guide);
   if (editing.platform === "slack") {

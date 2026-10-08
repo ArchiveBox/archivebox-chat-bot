@@ -1116,10 +1116,10 @@ dialog::backdrop {
   display: flex;
   justify-content: space-between;
   position: sticky;
-  bottom: -30px;
+  bottom: 0;
   background: white;
   border-top: 1px solid var(--line);
-  padding: 20px 0 0;
+  padding: 16px 0;
   margin-top: 24px;
 }
 .pairing {
@@ -1203,5 +1203,106 @@ button:disabled {
   }
   nav {
     margin-top: 15px;
+  }
+}
+
+/* Provider instructions stay beside the fields they explain. */
+dialog:has(.setup-guide[open]) {
+  width: min(1180px, calc(100vw - 30px));
+}
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
+  gap: 28px;
+  align-items: start;
+}
+.editor-layout:has(.setup-guide:not([open])) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.setup-guide {
+  margin: 0;
+  padding: 15px 18px;
+  border: 1px solid #dce6cd;
+  border-radius: 10px;
+  background: #f7faef;
+}
+.setup-guide summary {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.guide-steps {
+  margin: 20px 0 0;
+  padding-left: 23px;
+}
+.guide-steps > li {
+  padding: 0 0 22px 5px;
+  font-size: 12px;
+}
+.guide-steps > li::marker {
+  color: #5b793e;
+  font-weight: 700;
+}
+.guide-steps > li:last-child {
+  padding-bottom: 0;
+}
+.guide-step h3 {
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+.guide-step p {
+  line-height: 1.6;
+  color: #53604d;
+}
+.guide-step figure {
+  margin: 12px 0 8px;
+}
+.guide-step img {
+  display: block;
+  width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  background: #e9eee4;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.guide-step figcaption {
+  font-size: 10px;
+  color: #68755e;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.guide-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 9px;
+}
+.guide-docs a, .guide-step figcaption a {
+  color: #365d2b;
+  text-decoration: underline;
+  font-size: 11px;
+}
+.guide-callback {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 11px;
+  margin: 10px 0;
+}
+.guide-step .guide-warning {
+  color: #866422;
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .guide-step img {
+    max-height: 260px;
   }
 }

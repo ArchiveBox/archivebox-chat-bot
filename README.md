@@ -47,7 +47,7 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 
 #### Slack
 
-- **Connect:** create the preconfigured app → install → paste bot + app tokens.
+- **Connect:** [create/install the app](https://docs.slack.dev/tools/bolt-js/creating-an-app/) → [bot token](https://docs.slack.dev/authentication/tokens/) + [app token](https://docs.slack.dev/tools/python-slack-sdk/socket-mode/).
 - **Use:** invite the bot to channels; mention it in a thread or send a DM.
 - **Destinations:** create **New URLs + Saved URLs** in the console. Socket Mode needs no public webhook.
 
@@ -68,23 +68,40 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 </tr>
 </table>
 
+<details>
+<summary><b>Where to get Slack tokens · same screenshots as the setup wizard</b></summary>
+
+<table>
+<tr><th width="33%">Install the app</th><th width="33%">Copy Bot User OAuth Token</th><th width="33%">Generate App-Level Token</th></tr>
+<tr>
+<td><a href="archivebox_chat_bot/static/guides/slack-install.png"><img src="archivebox_chat_bot/static/guides/slack-install.png" width="100%" alt="Slack's official Install to Workspace screen"></a></td>
+<td><a href="archivebox_chat_bot/static/guides/slack-bot-token.png"><img src="archivebox_chat_bot/static/guides/slack-bot-token.png" width="100%" alt="Slack's official bot-token Copy screen, with the example token blurred by Slack"></a></td>
+<td><a href="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg"><img src="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg" width="100%" alt="Our Slack app's token-generation control and connections:write scope"></a></td>
+</tr>
+</table>
+
+Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/). App-level token: our installed app.
+
+</details>
+
 #### Zulip
 
-- **Connect:** create a generic bot → enter server URL, bot email, API key.
+- **Connect:** [create a Generic bot](https://zulip.com/help/add-a-bot-or-integration) → [copy bot email + API key](https://zulip.com/api/api-keys) → enter your server URL.
 - **Use:** topics, mentions, DMs; create private **New URLs + Saved URLs** channels.
 
 <table>
-<tr><th width="50%">1 · Connect & choose channels</th><th width="50%">2 · Browse Saved URLs</th></tr>
+<tr><th width="33%">1 · Copy bot email</th><th width="33%">2 · Copy API key</th><th width="33%">3 · Browse Saved URLs</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/zulip-config.png"><img src="screenshots/zulip-config.png" width="100%" alt="Actual unconnected Zulip setup form with server, credentials, and destination controls"></a></td>
-<td width="50%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip snapshot card with uploaded screenshot and favicon"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/zulip-bot-email.jpg"><img src="archivebox_chat_bot/static/guides/zulip-bot-email.jpg" width="100%" alt="Our Zulip Generic bots with real bot email addresses in the Email column"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/zulip-bot-credentials.jpg"><img src="archivebox_chat_bot/static/guides/zulip-bot-credentials.jpg" width="100%" alt="Our Generic Zulip bot with API key and configuration-download controls; secret stays hidden"></a></td>
+<td width="33%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip snapshot card with uploaded screenshot and favicon"></a></td>
 </tr>
 </table>
 
 #### Telegram
 
-- **Connect:** [BotFather](https://t.me/BotFather) token → add to group → choose destinations.
-- **Use:** DMs, mentions, topics; disable bot privacy for group-wide capture.
+- **Connect:** [BotFather → /newbot](https://core.telegram.org/bots/tutorial#obtain-your-bot-token) → copy token → add to group.
+- **Groups:** [disable bot privacy](https://core.telegram.org/bots/features#privacy-mode), then remove/re-add the bot for group-wide capture.
 - **Commands:** `/save`, `/search`, `/auto`, `/status`, `/help`; polling needs no public webhook.
 
 <table>
@@ -99,28 +116,32 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 <details>
 <summary><b>BotFather · names & group privacy</b></summary>
 
-<a href="screenshots/telegram-setup.jpg"><img src="screenshots/telegram-setup.jpg" width="480" alt="Actual BotFather conversation setting the two bot names and disabling group privacy"></a>
+<a href="archivebox_chat_bot/static/guides/telegram-botfather-name.jpg"><img src="archivebox_chat_bot/static/guides/telegram-botfather-name.jpg" width="480" alt="Our BotFather conversation setting the bot display names"></a>
+
+<a href="archivebox_chat_bot/static/guides/telegram-botfather-capture-privacy.jpg"><img src="archivebox_chat_bot/static/guides/telegram-botfather-capture-privacy.jpg" width="480" alt="Our BotFather conversation selecting the capture bot and disabling group privacy"></a>
 
 </details>
 
 #### WhatsApp
 
-- **Connect:** Agent API key for creator DMs, or **Linked Devices** QR pairing for an account.
-- **Use:** send URLs in a DM; linked accounts also support groups.
+- **Connect:** [Settings → Agents → Create an agent → View API key](https://www.whatsapp.com/developer/WhatsApp-Agent-Platform-Developer-Manual.pdf#page=3) on your primary phone.
+- **Groups:** choose QR pairing → [Linked Devices → Link a Device](https://faq.whatsapp.com/1317564962315842). [Agent keys](https://faq.whatsapp.com/1050934623978152) support creator DMs only.
 - **Live evidence:** Agent DM capture ✅ · linked-account groups pending.
 
 <table>
-<tr><th width="33%">1 · Set up an agent</th><th width="33%">2 · Connect WhatsApp</th><th width="33%">3 · Save from a DM</th></tr>
+<tr><th width="33%">1 · iPhone: create agent → API key</th><th width="33%">2 · Android: add an agent</th><th width="33%">3 · Save from a DM</th></tr>
 <tr>
-<td width="33%" valign="top"><a href="screenshots/whatsapp-setup.jpg"><img src="screenshots/whatsapp-setup.jpg" width="100%" alt="Actual WhatsApp Agents setup requiring the primary phone for creation"></a></td>
-<td width="33%" valign="top"><a href="screenshots/whatsapp-config.png"><img src="screenshots/whatsapp-config.png" width="100%" alt="Actual WhatsApp Agent capture settings, currently disabled"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/whatsapp-agents-ios.webp"><img src="archivebox_chat_bot/static/guides/whatsapp-agents-ios.webp" width="100%" alt="WABetaInfo iPhone example showing Create an agent, name, and View API key"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/whatsapp-agents-android.webp"><img src="archivebox_chat_bot/static/guides/whatsapp-agents-android.webp" width="100%" alt="WABetaInfo Android example showing Agents and Add an agent"></a></td>
 <td width="33%" valign="top"><a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="100%" alt="Real WhatsApp Agent DM with captured cancellation references and screenshots"></a></td>
 </tr>
 </table>
 
+Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents-on-ios/) · [Android](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents/). Capture screenshot: our live test.
+
 #### IRC
 
-- **Connect:** server + nickname + channels; TLS/SASL settings when required.
+- **Connect:** [server + nickname + channels](https://libera.chat/guides/connect) → [register an account](https://libera.chat/guides/registration) → [SASL](https://libera.chat/guides/sasl).
 - **Use:** mentions, private messages, auto-archive channels; saved cards use text links.
 
 <table>
@@ -133,15 +154,15 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 
 #### iMessage
 
-- **Connect:** Mac + Messages + [imsg](https://github.com/openclaw/imsg); allow Full Disk Access and Messages Automation.
+- **Connect:** [install imsg](https://github.com/openclaw/imsg/blob/main/docs/install.md) on a Mac → [Full Disk Access + Messages Automation](https://github.com/openclaw/imsg/blob/main/docs/permissions.md).
 - **Use:** existing conversations; local Mac or Docker → SSH.
 - **Live evidence:** send/history/watch ✅ · incoming capture pending.
 
 <table>
-<tr><th width="50%">1 · Allow Messages access</th><th width="50%">2 · Connect the Mac</th></tr>
+<tr><th width="50%">1 · Enable Full Disk Access</th><th width="50%">2 · Allow Messages Automation</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/imessage-setup.png"><img src="screenshots/imessage-setup.png" width="100%" alt="Actual macOS permission prompt for Messages automation"></a></td>
-<td width="50%" valign="top"><a href="screenshots/imessage-config.png"><img src="screenshots/imessage-config.png" width="100%" alt="Actual unconnected iMessage setup form with SSH transport options"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/imessage-permissions-setup.jpg"><img src="archivebox_chat_bot/static/guides/imessage-permissions-setup.jpg" width="100%" alt="Our Mac with Full Disk Access enabled for the host running imsg"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/imessage-automation-setup.jpg"><img src="archivebox_chat_bot/static/guides/imessage-automation-setup.jpg" width="100%" alt="Our Mac with Messages Automation enabled"></a></td>
 </tr>
 </table>
 
@@ -155,15 +176,15 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 
 #### Messenger
 
-- **Connect:** Facebook Page credentials + HTTPS message webhook; or an existing [Matrix bridge](https://github.com/mautrix/meta).
+- **Connect:** [Meta app + Page token](https://developers.facebook.com/docs/messenger-platform/get-started) → [HTTPS webhook](https://developers.facebook.com/docs/messenger-platform/webhooks); or an existing [Matrix bridge](https://github.com/mautrix/meta).
 - **Use:** Page conversations; personal groups through Matrix.
 - **Live evidence:** app/Page created ✅ · incoming capture pending.
 
 <table>
-<tr><th width="50%">1 · Create a Page</th><th width="50%">2 · Configure Messenger</th></tr>
+<tr><th width="50%">1 · Create a Page</th><th width="50%">2 · Generate token & configure webhook</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/messenger-setup.jpg"><img src="screenshots/messenger-setup.jpg" width="100%" alt="Actual dedicated ArchiveBox Bot Facebook Page"></a></td>
-<td width="50%" valign="top"><a href="screenshots/messenger-config.png"><img src="screenshots/messenger-config.png" width="100%" alt="Actual unconnected Messenger setup form with Page credentials and webhook verification"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/messenger-setup.jpg"><img src="archivebox_chat_bot/static/guides/messenger-setup.jpg" width="100%" alt="Actual dedicated ArchiveBox Bot Facebook Page"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/messenger-token-setup.jpg"><img src="archivebox_chat_bot/static/guides/messenger-token-setup.jpg" width="100%" alt="Our Meta app with populated Page, Generate token button, and webhook controls"></a></td>
 </tr>
 </table>
 
@@ -178,21 +199,22 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 #### Beeper
 
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
-- **Choose:** one network account + allowed conversations per bot; Beeper runs separately, iMessage still needs a Mac.
+- **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
 - **Live evidence:** macOS/Docker readiness ✅ · signed-in chats, media, reactions pending.
 
 <table>
-<tr><th width="50%">1 · Configure Beeper</th><th width="50%">2 · Check the server</th></tr>
+<tr><th width="50%">1 · Create a Beeper API token</th><th width="50%">2 · Check the server</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/beeper-config.png"><img src="screenshots/beeper-config.png" width="100%" alt="Actual unconnected Beeper form with account and conversation selectors"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/beeper-token.png"><img src="archivebox_chat_bot/static/guides/beeper-token.png" width="100%" alt="Felix Krause example of Beeper API token creation; enable Allow sensitive actions for sending"></a></td>
 <td width="50%" valign="top"><a href="screenshots/beeper-setup.png"><img src="screenshots/beeper-setup.png" width="100%" alt="Actual running Docker Beeper Server reporting that sign-in is still required"></a></td>
 </tr>
 </table>
 
 <details>
-<summary><b>Docker → Beeper address</b></summary>
+<summary><b>Docker → Beeper address & screenshot credit</b></summary>
 
-- Host address: `http://host.docker.internal:<port>`; container `localhost` points at the bot itself.
+- Host address: `http://host.docker.internal:<port>`; container `localhost` points at the bot itself. Beeper runs separately; iMessage needs a Mac.
+- Token example: [Felix Krause](https://krausefx.com/blog/openclaw-my-automation-setup), earlier Beeper UI. Enable **Allow sensitive actions** for replies (off in that image).
 
 </details>
 
@@ -255,7 +277,7 @@ uv run ruff check .
 
 - Python: shared capture/agent engine, queue, permissions, console.
 - Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
-- Live tests: `tests/test_*_live.py`. Real screenshots; pending evidence marked per provider.
+- Live tests: `tests/test_*_live.py`. Capture screenshots are our real sessions. Setup examples credit their original publishers and retain their ownership; they are not live acceptance evidence.
 
 </details>
 
