@@ -325,6 +325,17 @@ docker compose up -d
 
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
 - **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
+- **Personal account:** enable **Include my own messages** for capture in selected chats, including Signal Note to Self. Bot replies are tracked separately so they are not captured again; this option does not enable AI replies to your own messages.
+
+<p><strong>Live Signal check (2026-10-08):</strong> Real Signal Desktop messages in Note to Self and the dedicated ArchiveBox Cabbage Test group each queued two Ars Technica URLs through Beeper. These captures are still waiting in Cabbage's ArchiveBox queue. The group also receives Saved URLs notifications from the collection; those notifications are not proof that the pending Signal captures completed.</p>
+
+<table>
+<tr><th width="50%">Signal DM and queue acknowledgement</th><th width="50%">Signal group submission</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/signal-dm-queued-cabbage.png"><img src="screenshots/signal-dm-queued-cabbage.png" width="100%" alt="Real Signal Note to Self save command with two Ars Technica URLs and the bot's queued acknowledgement"></a></td>
+<td width="50%" valign="top"><a href="screenshots/signal-group-request-cabbage.png"><img src="screenshots/signal-group-request-cabbage.png" width="100%" alt="Real Signal group message containing two Ars Technica URLs with the bot's processing reaction"></a></td>
+</tr>
+</table>
 
 <details>
 <summary><b>Docker → Beeper address</b></summary>
