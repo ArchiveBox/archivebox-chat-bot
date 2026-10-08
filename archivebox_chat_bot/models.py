@@ -16,6 +16,8 @@ class Message:
     user_name: str = ""
     is_bot: bool = False
     connection: str = ""
+    channel_name: str = ""
+    source_platform: str = ""
 
     @property
     def key(self):

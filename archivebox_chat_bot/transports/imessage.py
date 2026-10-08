@@ -247,7 +247,7 @@ class IMessageTransport:
         return [
             {
                 "id": str(chat["id"]),
-                "name": chat.get("name") or chat.get("identifier") or str(chat["id"]),
+                "name": chat.get("name") or "",
                 "is_dm": not chat.get("is_group", True),
             }
             for chat in response.get("chats", [])

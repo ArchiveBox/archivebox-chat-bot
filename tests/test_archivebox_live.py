@@ -81,7 +81,7 @@ async def test_real_crawl_metadata_and_images(archivebox):
     target = os.environ.get("ARCHIVEBOX_TEST_CAPTURE_URL", "https://archivebox.io/")
     separator = "&" if "?" in target else "?"
     target += f"{separator}slack-acceptance={uuid4().hex}"
-    queued = await archivebox.add([target], "ArchiveBox Slack Acceptance")
+    queued = await archivebox.add([target], ["slack", "ArchiveBox Slack Acceptance"])
     deadline = monotonic() + 180
     while True:
         crawl = await archivebox.crawl(queued["crawl_id"])
@@ -175,12 +175,12 @@ async def test_async_opencode_task_survives_client_reconnect(archivebox):
 
 async def test_repeated_human_submissions_create_tagged_captures(archivebox):
     target = f"https://example.com/?slack-repeated-submission={uuid4().hex}"
-    first = await archivebox.add([target], "First Slack Submitter")
+    first = await archivebox.add([target], ["slack", "First Slack Submitter"])
     first_deadline = monotonic() + 180
     while (await archivebox.crawl(first["crawl_id"]))["status"] != "sealed":
         assert monotonic() < first_deadline, "First submission did not seal"
         await asyncio.sleep(1)
-    second = await archivebox.add([target], "Second Slack Submitter")
+    second = await archivebox.add([target], ["slack", "Second Slack Submitter"])
     assert second["crawl_id"] != first["crawl_id"]
     second_deadline = monotonic() + 180
     while (await archivebox.crawl(second["crawl_id"]))["status"] != "sealed":

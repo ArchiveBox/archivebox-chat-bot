@@ -82,8 +82,7 @@ class ArchiveBox:
         page = await self.snapshots(limit=1)
         return {"ok": True, "snapshots": page["total_items"], "url": self.settings.archivebox_public_url}
 
-    async def add(self, urls: list[str], submitter: str, source: str = "slack") -> dict:
-        tags = [source, submitter.replace(",", " ").strip()]
+    async def add(self, urls: list[str], tags: list[str]) -> dict:
         result = await self._request(
             "POST",
             "/api/v1/cli/add",
@@ -91,7 +90,7 @@ class ArchiveBox:
                 "urls": urls,
                 "depth": 0,
                 "only_new": False,
-                "tag": ",".join(tag for tag in tags if tag),
+                "tag": ",".join(tags),
                 "persona": self.settings.persona,
                 "plugins": self.settings.plugins,
                 "parser": "url_list",

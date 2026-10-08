@@ -33,10 +33,17 @@
 - **Choose permissions** → people, groups, commands, and bot preferences.
 - **Use several apps together** → one console, one Docker service, one ArchiveBox server.
 
+<details>
+<summary><b>Slack · Saved URLs</b></summary>
+
+<a href="screenshots/slack-saved.jpg"><img src="screenshots/slack-saved.jpg" width="900" alt="Real Slack Saved URLs cards with linked titles, screenshots, Saved file sizes, personas, and favicon links"></a>
+
+</details>
+
 <table>
 <tr><th width="33%">Telegram · saved references</th><th width="33%">WhatsApp · capture from a DM</th><th width="33%">IRC · saved URLs</th></tr>
 <tr>
-<td width="33%"><a href="screenshots/telegram-capture.jpg"><img src="screenshots/telegram-capture.jpg" width="100%" alt="Real Telegram group receiving sealed AbortController and AbortSignal snapshots"></a></td>
+<td width="33%"><a href="screenshots/telegram-capture.jpg"><img src="screenshots/telegram-capture.jpg" width="100%" alt="Real Telegram group receiving RFC 9111 and Python URL parsing snapshots with Saved file sizes"></a></td>
 <td width="33%"><a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="100%" alt="Real WhatsApp Agent DM capturing cancellation references with saved screenshots"></a></td>
 <td width="33%"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC Saved URLs channel with Python asyncio references and archive links"></a></td>
 </tr>
@@ -149,7 +156,7 @@ docker compose exec archivebox-chat-bot cat /data/admin-password
 - **Telegram:** `/save`, `/search`, `/auto`, `/status`, `/help` also work.
 - **Zulip:** DM a command or put it after a mention.
 - **IRC / iMessage:** `/archivebox …` in ordinary message text.
-- Captures use depth **0**, the selected persona, and tags for the **provider + sender**.
+- Captures use depth **0**, the selected persona, and separate **provider, sender, channel/group** tags: `slack,bob,accounting`. DMs omit the channel/group tag.
 - History comes from the provider where available; other providers retain the messages received while connected.
 - Reactions and media follow each provider’s capabilities. IRC and standard iMessage do not provide reliably targeted reactions; Messenger Pages have text replies.
 

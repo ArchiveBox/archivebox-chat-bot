@@ -29,6 +29,15 @@ def submitter_tag(name: str, user: str) -> str:
     return re.sub(r"[,\x00-\x1f]", " ", name).strip()[:100] or user
 
 
+def submission_tags(provider: str, sender: str, channel: str = "") -> list[str]:
+    """One tag per source attribute, safe for ArchiveBox's comma-separated API."""
+    return list(
+        dict.fromkeys(
+            tag for value in (provider, sender, channel.removeprefix("#")) if (tag := submitter_tag(value, ""))
+        )
+    )
+
+
 def slack_escape(text: str) -> str:
     return html.escape(str(text), quote=False)
 

@@ -268,6 +268,7 @@ class Zulip:
             is_mention=is_mention,
             command=command,
             user_name=raw.get("sender_full_name", sender),
+            channel_name="" if is_dm else raw["display_recipient"],
         )
 
     async def recent(self, message: Message) -> list[str]:
@@ -354,7 +355,7 @@ class Zulip:
             f"**[{_markdown(snapshot.get('title') or snapshot['url'])}]({_link(detail_url)})**",
             f"[{_markdown(urlsplit(snapshot['url']).hostname or snapshot['url'])}]({_link(snapshot['url'])})",
             (
-                f"{size_label(int(snapshot.get('output_size') or 0))} · "
+                f"Saved {size_label(int(snapshot.get('output_size') or 0))} · "
                 f"👤 {_markdown(snapshot.get('persona') or 'Default')}"
             ),
         ]

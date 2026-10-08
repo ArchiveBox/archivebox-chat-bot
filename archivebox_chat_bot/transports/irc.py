@@ -86,6 +86,7 @@ class _Client(pydle.Client):
         event = {
             "id": message_id,
             "channel": nick if is_dm else target,
+            "channel_name": "" if is_dm else target,
             "user": user,
             "user_name": nick,
             "text": body,

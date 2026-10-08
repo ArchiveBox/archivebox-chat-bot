@@ -320,6 +320,7 @@ class Account {
       message: {
         id: m.id,
         channel,
+        source_platform: this.config.platform,
         user: m.author.userId,
         user_name: m.author.fullName || m.author.userName,
         text: m.text,
@@ -378,31 +379,38 @@ class Account {
       )
       .run(channel, name || channel, Number(isDM));
   }
-  async channels() {
-    const rows = this.state.db
-      .prepare("SELECT id,name,is_dm FROM channels ORDER BY id")
-      .all();
-    for (const row of rows) {
-      if (row.name !== row.id) continue;
+  async channelMetadata(channel: string) {
+    const row = this.state.db
+      .prepare("SELECT id,name,is_dm FROM channels WHERE id=?")
+      .get(channel);
+    if (row && row.name === row.id) {
       try {
-        const channel = String(row.id);
         const thread = this.thread(channel);
         const sdkChannel =
           this.adapter instanceof TelegramAdapter
             ? channel
             : (this.adapter.channelIdFromThreadId?.(thread) ?? channel);
         const info = await this.adapter.fetchChannelInfo?.(sdkChannel);
-        if (!info) continue;
-        if (this.closing) break;
-        if (info.name) row.name = info.name;
-        if (info.isDM !== undefined) row.is_dm = Number(info.isDM);
-        this.state.db
-          .prepare("UPDATE channels SET name=?,is_dm=? WHERE id=?")
-          .run(row.name, row.is_dm, channel);
+        if (info && !this.closing) {
+          if (info.name) row.name = info.name;
+          if (info.isDM !== undefined) row.is_dm = Number(info.isDM);
+          this.state.db
+            .prepare("UPDATE channels SET name=?,is_dm=? WHERE id=?")
+            .run(row.name, row.is_dm, channel);
+        }
       } catch {
         // Discovery is optional: preserve the observed conversation and redact provider errors.
         process.stderr.write("Connector conversation metadata unavailable\n");
       }
+    }
+    return row;
+  }
+  async channels() {
+    const rows = this.state.db
+      .prepare("SELECT id,name,is_dm FROM channels ORDER BY id")
+      .all();
+    for (const row of rows) {
+      Object.assign(row, await this.channelMetadata(String(row.id)));
     }
     return {
       channels: rows.map((row) => ({ ...row, is_dm: Boolean(row.is_dm) })),
@@ -413,7 +421,15 @@ class Account {
     id: string,
     event: {
       needs_dm_lookup?: boolean;
-      message: { thread: string; channel: string; is_dm: boolean };
+      message: {
+        thread: string;
+        channel: string;
+        is_dm: boolean;
+        channel_name?: string;
+        source_platform?: string;
+        user?: string;
+        user_name?: string;
+      };
     },
   ) {
     if (event.needs_dm_lookup) {
@@ -428,6 +444,23 @@ class Account {
         .prepare("UPDATE channels SET is_dm=? WHERE id=?")
         .run(Number(event.message.is_dm), event.message.channel);
     }
+    const channel = event.message.channel;
+    const observed = await this.channelMetadata(channel);
+    const name = typeof observed?.name === "string" ? observed.name : undefined;
+    if (name && name !== channel) {
+      if (!event.message.is_dm) event.message.channel_name = name;
+      // Messenger Page messages contain only the sender ID; its DM metadata
+      // comes from the SDK's real Graph profile lookup.
+      if (
+        this.adapter instanceof MessengerAdapter &&
+        event.message.user_name === event.message.user
+      )
+        event.message.user_name = name;
+    }
+    event.message.source_platform ??= this.config.platform;
+    this.state.db
+      .prepare("UPDATE ingress SET payload=? WHERE id=?")
+      .run(JSON.stringify(event), id);
     const { needs_dm_lookup: _, ...payload } = event;
     await this.deliver(id, payload);
   }

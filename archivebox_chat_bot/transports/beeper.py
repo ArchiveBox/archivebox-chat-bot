@@ -156,11 +156,54 @@ class BeeperTransport:
         participants = {p["id"]: p for p in chat.get("participants", {}).get("items", [])}
         sender = participants.get(message["senderID"], {})
         mentions = message.get("mentions") or []
+        # A recognized network name disambiguates multiprotocol bridges such
+        # as Meta. Fall back to bridge type when the display name is unknown;
+        # the connection still routes through Beeper.
+        aliases = {
+            "slackgo": "slack",
+            "discordgo": "discord",
+            "meta": "messenger",
+            "facebookmessenger": "messenger",
+            "facebook": "messenger",
+            "heisenbridge": "irc",
+        }
+        networks = {
+            "slack",
+            "zulip",
+            "telegram",
+            "whatsapp",
+            "irc",
+            "imessage",
+            "messenger",
+            "matrix",
+            "discord",
+            "signal",
+            "instagram",
+            "twitter",
+            "linkedin",
+            "googlechat",
+            "googlemessages",
+            "googlevoice",
+            "bluesky",
+            "line",
+        }
+        source_platform = "beeper"
+        for value in (self.identity.get("network"), self.identity.get("bridge", {}).get("type")):
+            normalized = str(value or "").lower().replace(" ", "").replace("-", "").replace("_", "")
+            normalized = aliases.get(normalized, normalized)
+            if normalized in networks:
+                source_platform = normalized
+                break
         return {
             "id": message["id"],
             "channel": chat["id"],
+            "source_platform": source_platform,
+            **({"channel_name": chat["title"]} if chat["type"] == "group" and chat.get("title") else {}),
             "user": message["senderID"],
-            "user_name": message.get("senderName") or sender.get("fullName") or message["senderID"],
+            "user_name": message.get("senderName")
+            or sender.get("fullName")
+            or sender.get("username")
+            or message["senderID"],
             "text": message.get("text") or "",
             # linkedMessageID is an ordinary reply, not a conversation/topic identifier.
             "thread": "",

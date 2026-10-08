@@ -1,5 +1,14 @@
 from archivebox_chat_bot.store import Store
-from archivebox_chat_bot.text import extract_urls, submitter_tag
+from archivebox_chat_bot.text import extract_urls, submission_tags, submitter_tag
+
+
+def test_submission_tags_are_separate_and_preserve_names():
+    assert submission_tags("slack", "bob", "#accounting") == ["slack", "bob", "accounting"]
+    assert submission_tags("telegram", "Bob Smith", "Team Finance") == ["telegram", "Bob Smith", "Team Finance"]
+    assert submission_tags("zulip", "Zoë", "Comptabilité") == ["zulip", "Zoë", "Comptabilité"]
+    assert submission_tags("irc", "bob") == ["irc", "bob"]
+    assert submission_tags("slack", "Bob, Jr.", "accounting\n,finance") == ["slack", "Bob  Jr.", "accounting  finance"]
+    assert submission_tags("slack", "slack", "") == ["slack"]
 
 
 def test_slack_markdown_and_balanced_url_extraction():

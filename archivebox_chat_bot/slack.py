@@ -132,6 +132,8 @@ class Slack:
             text,
             payload.get("trigger_id", ""),
             command=command or "help",
+            is_dm=payload.get("channel_name") == "directmessage",
+            channel_name=payload.get("channel_name", ""),
         )
         await self.on_message(message)
 
@@ -323,7 +325,7 @@ class Slack:
         title = slack_escape(" ".join((snapshot.get("title") or snapshot["url"]).split()))[:100]
         original = slack_escape(snapshot["url"])
         source = slack_escape(urlsplit(snapshot["url"]).hostname or snapshot["url"])
-        size = size_label(snapshot.get("output_size", 0))
+        size = "Saved " + size_label(snapshot.get("output_size", 0))
         persona = slack_escape(" ".join((snapshot.get("persona") or "Default").split()))
         line = f"✅ *<{detail_url}|{title}>* · <{original}|{source}> · {size} · 👤 {persona}"
         if media.get("favicon"):

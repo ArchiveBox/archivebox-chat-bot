@@ -12,7 +12,7 @@ from slack_sdk.errors import SlackApiError
 from .archivebox import ArchiveBox
 from .models import Message
 from .store import now
-from .text import extract_urls, slack_escape, submitter_tag
+from .text import extract_urls, slack_escape, submission_tags, submitter_tag
 
 log = logging.getLogger(__name__)
 
@@ -288,6 +288,13 @@ class Engine:
                 await self.reaction(bot, message, "white_check_mark")
                 self.store.update(job["id"], "done")
                 return
+            if not message.is_dm and not message.channel_name:
+                channel = next((row for row in await bot.channels() if row["id"] == message.channel), {})
+                message.channel_name = channel.get("name", "") if channel.get("name") != message.channel else ""
+                message.is_dm = channel.get("is_dm", False)
+            tags = submission_tags(
+                message.source_platform or message.platform, name, "" if message.is_dm else message.channel_name
+            )
             context = []
             if message.is_mention or (message.role == "ai" and message.is_dm):
                 context = await bot.recent(message)
@@ -306,6 +313,7 @@ class Engine:
                     f"{self.settings.ai_prompt} Keep replies on one compact line whenever possible; avoid lists unless asked.\n"
                     f"ArchiveBox public URL: {self.settings.archivebox_public_url}\n"
                     f"Collection directory: {session['directory']}\n\n"
+                    f"Apply these separate source tags to every URL you add, alongside any requested tags: {json.dumps(tags)}.\n"
                     f"Request from {name} ({message.user}) on {message.platform}. Earlier conversation is context; "
                     f"the final message is the current request.\n<conversation>\n{text}\n</conversation>"
                 )
@@ -321,9 +329,10 @@ class Engine:
                 return
             if len(urls) > self.settings.max_urls:
                 raise ValueError(f"Message contains {len(urls)} URLs; configured limit is {self.settings.max_urls}")
-            result = await self.archive.add(urls, name, message.platform)
+            result = await self.archive.add(urls, tags)
             committed = True
             result["urls"] = urls
+            result["tags"] = tags
             self.store.update(job["id"], "waiting", result)
             if message.command:
                 await bot.post_text(

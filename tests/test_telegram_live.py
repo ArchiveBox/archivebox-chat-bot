@@ -220,7 +220,7 @@ async def test_real_archive_card_native_image_and_reactions(credentials, connect
     assert actual["photo"] and actual["photo"][-1]["width"] > 0
     assert "\n" not in actual["caption"]
     assert snapshot["url"] in actual["caption"]
-    assert size_label(snapshot["output_size"]) in actual["caption"]
+    assert "Saved " + size_label(snapshot["output_size"]) in actual["caption"]
     assert snapshot["persona"] in actual["caption"]
     assert detail_url in {entity.get("url") for entity in actual["caption_entities"]}
     assert actual["from"]["id"] == int(credentials["telegram"]["bot_id"])

@@ -190,6 +190,8 @@ class TransportBot:
             channel=str(raw["channel"]),
             user=str(raw["user"]),
             user_name=raw.get("user_name", str(raw["user"])),
+            channel_name=raw.get("channel_name", ""),
+            source_platform=raw.get("source_platform", ""),
             text=raw.get("text", ""),
             ts=str(raw["id"]),
             thread=raw.get("thread", ""),
@@ -257,7 +259,7 @@ class TransportBot:
         title = " ".join((snapshot.get("title") or snapshot["url"]).split())[:100]
         markdown = self.settings.platform == "telegram" or self.options.get("transport") == "matrix"
         headline = f"[{title}]({detail_url})" if markdown else f"{title} — {detail_url}"
-        text = f"✅ {headline} · {snapshot['url']} · {size_label(snapshot.get('output_size', 0))} · 👤 {snapshot.get('persona') or 'Default'}"
+        text = f"✅ {headline} · {snapshot['url']} · Saved {size_label(snapshot.get('output_size', 0))} · 👤 {snapshot.get('persona') or 'Default'}"
         if favicon := media.get("favicon"):
             text += f" · [🌐]({favicon.url})" if markdown else f" · 🌐 {favicon.url}"
         files = []
