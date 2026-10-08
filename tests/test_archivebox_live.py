@@ -11,6 +11,7 @@ from pathlib import Path
 from time import monotonic
 from uuid import uuid4
 
+import httpx
 import pytest
 
 from archivebox_chat_bot.archivebox import ArchiveBox
@@ -52,6 +53,21 @@ async def test_real_screenshot_download(archivebox):
     assert mimetype == "image/png"
     response = await archivebox._browser.get(url, headers=await archivebox._browser_headers())
     assert response.status_code == 200 and response.content == data
+
+
+async def test_real_subdomain_screenshot_download(archivebox):
+    """Use a real public capture on a server with isolated replay hosts."""
+    snapshot_id = os.environ["ARCHIVEBOX_TEST_SNAPSHOT_ID"]
+    snapshot = await archivebox._request(
+        "GET", f"/api/v1/core/snapshot/{snapshot_id}", params={"with_archiveresults": "true"}
+    )
+    image = await archivebox.artifact(snapshot, "screenshot")
+    assert image is not None and image.data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert f"snap-{snapshot_id.replace('-', '')[-12:]}." in image.url
+    async with httpx.AsyncClient() as reader:
+        response = await reader.get(image.url)
+    assert response.status_code == 200 and response.content == image.data
+    assert "cookie" not in response.request.headers and "authorization" not in response.request.headers
 
 
 async def test_real_server_base_url_discovers_api_host():

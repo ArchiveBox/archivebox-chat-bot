@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import time
+from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import NamedTuple
@@ -28,6 +29,7 @@ class ArchiveBox:
         self.admin_url = (settings.archivebox_admin_url or settings.archivebox_url).rstrip("/")
         self._api = httpx.AsyncClient(timeout=60, follow_redirects=False)
         self._browser = httpx.AsyncClient(timeout=60, follow_redirects=False)
+        self._replay = httpx.AsyncClient(timeout=60, follow_redirects=False)
         self._cookie = ""
         self._cookie_expires = 0.0
         self._session_lock = asyncio.Lock()
@@ -35,6 +37,7 @@ class ArchiveBox:
     async def close(self):
         await self._api.aclose()
         await self._browser.aclose()
+        await self._replay.aclose()
 
     @staticmethod
     def _response(response: httpx.Response):
@@ -268,12 +271,34 @@ class ArchiveBox:
         # Every candidate is an actual successful output manifest entry.
         path, mimetype = min(candidates)
         headers = await self._browser_headers()
-        # Detail aliases redirect outputs to isolated replay hosts. The stable
-        # replay endpoint serves the declared file on the configured admin host,
-        # keeping the administrator cookie out of redirect targets.
         snapshot_id = quote(str(snapshot["id"]), safe="")
         url = self.admin_url + f"/snapshot/{snapshot_id}/" + quote(path, safe="/")
-        async with self._browser.stream("GET", url, headers=headers) as response:
+        public_url = (
+            self.settings.archivebox_public_url.rstrip("/") + f"/snapshot/{snapshot_id}/" + quote(path, safe="/")
+        )
+        async with AsyncExitStack() as stack:
+            response = await stack.enter_async_context(self._browser.stream("GET", url, headers=headers))
+            if response.is_redirect:
+                origin = urlsplit(self.admin_url)
+                target = urlsplit(urljoin(url, response.headers.get("location", "")))
+                base_host = (origin.hostname or "").removeprefix("admin.")
+                replay_host = "snap-" + str(snapshot["id"]).replace("-", "")[-12:] + "." + base_host
+                if (
+                    target.scheme != origin.scheme
+                    or target.hostname != replay_host
+                    or target.port != origin.port
+                    or target.path != "/" + quote(path, safe="/")
+                    or target.query
+                    or target.fragment
+                    or target.username
+                    or target.password
+                ):
+                    raise RuntimeError("ArchiveBox returned an unexpected artifact redirect")
+                # Replay hosts serve untrusted captured content. Never send the
+                # administrator session, API key, or their cookie jar to them.
+                public_url = target.geturl()
+                self._replay.cookies.clear()
+                response = await stack.enter_async_context(self._replay.stream("GET", public_url))
             if response.status_code == 404:
                 return None
             if not response.is_success:
@@ -291,9 +316,6 @@ class ArchiveBox:
             actual_type = response.headers.get("content-type", mimetype).split(";", 1)[0]
             if actual_type == "text/html":
                 raise RuntimeError("ArchiveBox returned an HTML page instead of the requested image")
-            public_url = (
-                self.settings.archivebox_public_url.rstrip("/") + f"/snapshot/{snapshot_id}/" + quote(path, safe="/")
-            )
             return Artifact(b"".join(chunks), actual_type or "application/octet-stream", public_url)
 
     async def _agent_request(self, method: str, path: str, **kwargs):
