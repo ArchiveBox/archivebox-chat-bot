@@ -12,7 +12,7 @@
 
 </div>
 
-## ↗ `@ArchiveBox` Bot
+## 🏛️ `@ArchiveBox` Bot
 
 - **mention @ArchiveBox in any thread** → saves all URLs mentioned in the last 10 messages
 - **DM @ArchiveBox bot with any text** → archives every URL in your DM, AI bot can also handle complex tasks
