@@ -11,7 +11,7 @@ COMPOSE=(docker compose -p archiveboxdemo -f docker-compose.yml -f .archivebox-d
 STATE_FILE=.chatbot-image.digest
 OVERRIDE_FILE=.chatbot-deploy.override.yml
 while :; do
-    digest="$(docker buildx imagetools inspect "$DEPLOY_IMAGE" | awk '/^Digest:/ {print $2; exit}')"
+    digest="$(docker buildx imagetools inspect "$DEPLOY_IMAGE" | awk '/^Digest:/ && !found {digest=$2; found=1} END {if (found) print digest}')"
     [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
     previous="$(cat "$STATE_FILE" 2>/dev/null || true)"
     if [[ "$digest" != "$previous" ]]; then
