@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sqlite3
+import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -51,7 +52,10 @@ class Store:
             CREATE TABLE IF NOT EXISTS identity_quarantine (
                 namespace TEXT PRIMARY KEY, connection TEXT NOT NULL, role TEXT NOT NULL,
                 previous_fingerprint TEXT NOT NULL, fingerprint TEXT NOT NULL, created_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS admin_sessions (
+                token_hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS jobs_state ON jobs(state, created_at);
+            CREATE INDEX IF NOT EXISTS admin_sessions_expiry ON admin_sessions(expires);
         """)
         if "scope" not in {row[1] for row in self.db.execute("PRAGMA table_info(jobs)")}:
             self.db.execute("ALTER TABLE jobs ADD COLUMN scope TEXT NOT NULL DEFAULT ''")
@@ -327,6 +331,30 @@ class Store:
     def set_meta(self, key, value):
         with self.db:
             self.db.execute("INSERT OR REPLACE INTO meta VALUES (?,?)", (key, str(value)))
+
+    def create_admin_session(self, token_hash, csrf, expires):
+        with self.db:
+            self.db.execute("DELETE FROM admin_sessions WHERE expires<=?", (time.time(),))
+            self.db.execute(
+                "INSERT INTO admin_sessions(token_hash,csrf,expires) VALUES(?,?,?)", (token_hash, csrf, expires)
+            )
+
+    def admin_session(self, token_hash, current_time):
+        row = self.db.execute(
+            "SELECT csrf,expires FROM admin_sessions WHERE token_hash=?", (token_hash,)
+        ).fetchone()
+        if row and row[1] < current_time:
+            self.delete_admin_session(token_hash)
+            return None
+        return {"csrf": row[0], "expires": row[1]} if row else None
+
+    def delete_admin_session(self, token_hash):
+        with self.db:
+            self.db.execute("DELETE FROM admin_sessions WHERE token_hash=?", (token_hash,))
+
+    def revoke_admin_sessions_except(self, token_hash):
+        with self.db:
+            self.db.execute("DELETE FROM admin_sessions WHERE token_hash!=?", (token_hash,))
 
     def enqueue(self, key, kind, payload, scope=""):
         with self.db:

@@ -50,7 +50,6 @@ def create_app(directory=None):
 
     if password and not store.meta("password_hash"):
         save_password(password)
-    sessions = {}
     failures = {}
 
     @asynccontextmanager
@@ -128,7 +127,8 @@ def create_app(directory=None):
 
     def signed_in(request):
         key, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-        sessions[key] = {"csrf": csrf, "expires": time.time() + 86400}
+        expires = time.time() + 86400
+        store.create_admin_session(hashlib.sha256(key.encode()).hexdigest(), csrf, expires)
         response = JSONResponse({"csrf": csrf})
         response.set_cookie(
             "abx_chat_session", key, httponly=True, samesite="lax", secure=request.url.scheme == "https", max_age=86400
@@ -137,9 +137,8 @@ def create_app(directory=None):
 
     async def authenticated(request: Request):
         key = request.cookies.get("abx_chat_session", "")
-        session = sessions.get(key)
-        if not session or session["expires"] < time.time():
-            sessions.pop(key, None)
+        session = store.admin_session(hashlib.sha256(key.encode()).hexdigest(), time.time()) if key else None
+        if not session:
             raise HTTPException(401, "Sign in to the Chatbot Admin Console")
         if request.method not in ("GET", "HEAD"):
             verify_origin(request)
@@ -185,7 +184,8 @@ def create_app(directory=None):
 
     @app.post("/auth/logout")
     async def logout(request: Request, session=admin_session):
-        sessions.pop(request.cookies.get("abx_chat_session", ""), None)
+        key = request.cookies.get("abx_chat_session", "")
+        store.delete_admin_session(hashlib.sha256(key.encode()).hexdigest())
         response = JSONResponse({"ok": True})
         response.delete_cookie("abx_chat_session")
         return response
@@ -203,8 +203,7 @@ def create_app(directory=None):
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         current_key = request.cookies["abx_chat_session"]
-        sessions.clear()
-        sessions[current_key] = session
+        store.revoke_admin_sessions_except(hashlib.sha256(current_key.encode()).hexdigest())
         return {"ok": True}
 
     @app.get("/healthz")
