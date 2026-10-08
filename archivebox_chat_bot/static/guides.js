@@ -9,8 +9,6 @@ const setupGuides = {
     {
       title: "Connect with an app password",
       text: "Enter the mailbox address, IMAP server, and its app password. TLS on port 993 is selected for you. Gmail, iCloud, and Fastmail addresses fill their server automatically.",
-      image: "email-settings.jpg",
-      caption: "Connected test inbox · use your provider's server and port",
       docs: [["Gmail app passwords", "https://support.google.com/accounts/answer/185833"], ["iCloud IMAP settings", "https://support.apple.com/en-us/102525"], ["Fastmail IMAP settings", "https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports"]],
     },
     {
