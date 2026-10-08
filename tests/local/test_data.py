@@ -35,3 +35,19 @@ def test_durable_jobs_stay_bound_to_their_original_connection(tmp_path):
     assert [row["payload"]["text"] for row in first] == ["private original"]
     assert [row["payload"]["text"] for row in second] == ["private replacement"]
     store.close()
+
+
+def test_real_archived_svg_favicon_renders_as_png():
+    import io
+    from pathlib import Path
+
+    from PIL import Image
+
+    from archivebox_chat_bot.media import normalize_image
+
+    favicon = Path(__file__).parents[1] / "fixtures/mdn-favicon.svg"
+    result = normalize_image(favicon.read_bytes(), "favicon")
+    with Image.open(io.BytesIO(result)) as image:
+        assert image.format == "PNG"
+        assert image.size == (32, 32)
+        assert image.getbbox() is not None

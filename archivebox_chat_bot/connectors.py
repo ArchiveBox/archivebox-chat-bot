@@ -183,13 +183,6 @@ class TransportBot:
         )
         if self.role == "capture" and command:
             message.command, message.text = command[1], command[2] or ""
-        elif self.role == "capture" and (message.is_dm or message.is_mention):
-            text = re.sub(
-                r"@" + re.escape(str(self.options.get("username", "archivebox"))) + r"\b", "", message.text
-            ).strip()
-            pieces = text.split(maxsplit=1)
-            if pieces and pieces[0] in {"help", "save", "search", "status", "auto"}:
-                message.command, message.text = pieces[0], pieces[1] if len(pieces) > 1 else ""
         await self.on_message(message)
 
     async def user(self, user_id):
