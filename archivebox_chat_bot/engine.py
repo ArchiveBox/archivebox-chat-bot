@@ -345,10 +345,10 @@ class Engine:
                 message.source_platform or message.platform, name, "" if message.is_dm else message.channel_name
             )
             context = []
-            if message.is_mention or (message.role == "ai" and message.is_dm):
+            if message.is_mention or (message.role == "ai" and message.is_dm and not message.command):
                 context = await bot.recent(message)
             text = "\n".join([*context, message.text])
-            if message.role == "ai":
+            if message.role == "ai" and message.command != "save":
                 title = message.text
                 if message.platform == "slack":
                     await bot.agent_status(message, "processing")
@@ -516,7 +516,9 @@ class Engine:
                 self.error = safe_error(exc)
 
     async def monitor(self):
-        for job in self.store.jobs("waiting", limit=100, scope=self.scope()):
+        # Explicit save commands use the same capture path on either bot role.
+        jobs = [job for role in self.bots for job in self.store.jobs("waiting", limit=100, scope=self.scope(role))]
+        for job in jobs:
             if job["payload"]["platform"] != self.connection.platform:
                 continue
             crawl = await self.archive.crawl(job["result"]["crawl_id"])
