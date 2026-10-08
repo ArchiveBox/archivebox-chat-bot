@@ -104,7 +104,22 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 - **Use:** DM links, mention the bot in channels/threads, or use `/archivebox save`, `search`, `auto`, `status`, `help`.
 - **Destinations:** **New URLs + Saved URLs** are created automatically; choose existing channels under bot preferences. No public webhook.
 
-<a href="archivebox_chat_bot/static/guides/discord-create-app.jpg"><img src="archivebox_chat_bot/static/guides/discord-create-app.jpg" width="480" alt="Creating ArchiveBox Bot in our signed-in Discord Developer Portal"></a>
+<table>
+<tr><th width="33%">1 · Get your bot token</th><th width="33%">2 · Enable Message Content</th><th width="33%">3 · Add to your server</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/discord-bot-token.jpg"><img src="archivebox_chat_bot/static/guides/discord-bot-token.jpg" width="100%" alt="Our Discord Bot page with Reset Token and token-copy instructions"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/discord-message-content.jpg"><img src="archivebox_chat_bot/static/guides/discord-message-content.jpg" width="100%" alt="Our Discord bot with Message Content Intent enabled"></a></td>
+<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/discord-install.jpg"><img src="archivebox_chat_bot/static/guides/discord-install.jpg" width="100%" alt="Installing ArchiveBox Bot into the dedicated test server"></a></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Create the app · install both bots</b></summary>
+
+<a href="archivebox_chat_bot/static/guides/discord-create-app.jpg"><img src="archivebox_chat_bot/static/guides/discord-create-app.jpg" width="420" alt="Creating ArchiveBox Bot in the Discord Developer Portal"></a>
+<a href="archivebox_chat_bot/static/guides/discord-test-server.jpg"><img src="archivebox_chat_bot/static/guides/discord-test-server.jpg" width="620" alt="ArchiveBox Bot and ArchiveBox AI Bot installed in our Discord test server"></a>
+
+</details>
 
 [Official setup](https://docs.discord.com/developers/quick-start/getting-started) · [Message Content Intent](https://support-dev.discord.com/hc/en-us/articles/6207308062871-What-are-Privileged-Intents)
 
