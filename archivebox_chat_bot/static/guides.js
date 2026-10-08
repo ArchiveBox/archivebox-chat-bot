@@ -48,6 +48,8 @@ const setupGuides = {
       title: "Create and install your Slack app",
       text: "Choose your workspace → Create → Install to Workspace → Allow. Permissions, events, and commands are already filled in.",
       action: "slack-create",
+      image: "slack-create-app.jpg",
+      caption: "Our Slack app · reviewing its preconfigured permissions before creation",
       docs: [["Slack app setup", "https://docs.slack.dev/tools/bolt-js/creating-an-app/"]],
     },
     {
