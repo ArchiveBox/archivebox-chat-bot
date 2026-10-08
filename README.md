@@ -125,7 +125,6 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 
 - **Connect:** [Settings → Agents → Create an agent → View API key](https://www.whatsapp.com/developer/WhatsApp-Agent-Platform-Developer-Manual.pdf#page=3) on your primary phone.
 - **Groups:** choose QR pairing → [Linked Devices → Link a Device](https://faq.whatsapp.com/1317564962315842). [Agent keys](https://faq.whatsapp.com/1050934623978152) support creator DMs only.
-- **Live evidence:** Agent DM capture ✅ · linked-account groups pending.
 
 <table>
 <tr><th width="33%">1 · iPhone: create agent → API key</th><th width="33%">2 · Android: add an agent</th><th width="33%">3 · Save from a DM</th></tr>
@@ -155,7 +154,6 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 - **Connect:** [install imsg](https://github.com/openclaw/imsg/blob/main/docs/install.md) on a Mac → [Full Disk Access + Messages Automation](https://github.com/openclaw/imsg/blob/main/docs/permissions.md).
 - **Use:** existing conversations; local Mac or Docker → SSH.
-- **Live evidence:** send/history/watch ✅ · incoming capture pending.
 
 <table>
 <tr><th width="50%">1 · Enable Full Disk Access</th><th width="50%">2 · Allow Messages Automation</th></tr>
@@ -177,7 +175,6 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 - **Connect:** [Meta app + Page token](https://developers.facebook.com/docs/messenger-platform/get-started) → [HTTPS webhook](https://developers.facebook.com/docs/messenger-platform/webhooks); or an existing [Matrix bridge](https://github.com/mautrix/meta).
 - **Use:** Page conversations; personal groups through Matrix.
-- **Live evidence:** app/Page created ✅ · incoming capture pending.
 
 <table>
 <tr><th width="50%">1 · Create a Page</th><th width="50%">2 · Generate token & configure webhook</th></tr>
@@ -199,7 +196,6 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
 - **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
-- **Live evidence:** macOS/Docker readiness ✅ · signed-in chats, media, reactions pending.
 
 <table>
 <tr><th width="50%">1 · Create a Beeper API token</th><th width="50%">2 · Check the server</th></tr>
@@ -257,7 +253,7 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 <summary><b>Credentials & recovery</b></summary>
 
 - **Activity** → jobs, sessions, **Recover answer**, console password.
-- Pending jobs retain their original server/connection; review uncertain delivery before retrying.
+- Queued jobs retain their original server/connection; review uncertain delivery before retrying.
 - Blank credential fields preserve secrets. Protect the volume; use HTTPS for remote access.
 - Revoke credentials to remove access. Removing bot data preserves snapshots and chat messages.
 
@@ -276,7 +272,7 @@ uv run ruff check .
 
 - Python: shared capture/agent engine, queue, permissions, console.
 - Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
-- Live tests: `tests/test_*_live.py`. Capture screenshots are our real sessions. Setup examples credit their original publishers and retain their ownership; they are not live acceptance evidence.
+- Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers.
 
 </details>
 
@@ -337,7 +333,7 @@ uv run ruff check .
 #### WhatsApp AI
 
 - **Connect:** separate Agent API key or linked account; choose trusted people.
-- **Shown:** inspect existing archives → identify a missing Fetch reference → propose capture/tagging. Execution pending.
+- **Shown:** inspect existing archives → identify a missing Fetch reference → propose capture/tagging.
 
 <table>
 <tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Review the proposed plan</th></tr>
@@ -347,14 +343,7 @@ uv run ruff check .
 </tr>
 </table>
 
-#### Other AI providers
-
-| Provider | Second identity | Live task evidence |
-|---|---|---|
-| [Zulip](#zulip) | Generic bot email + API key | Multi-step capture pending |
-| [iMessage](#imessage) | Separate Mac/account | Incoming task pending |
-| [Messenger](#messenger) | Page or Matrix account | Incoming task pending |
-| [Beeper](#beeper) | Second network account + allowed conversations | Signed-in task pending |
+- **More providers:** follow the [Zulip](#zulip), [iMessage](#imessage), [Messenger](#messenger), or [Beeper](#beeper) setup with a separate bot/account.
 
 <details>
 <summary><b>Slack AgentExchange & Apps marketplace</b></summary>
