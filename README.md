@@ -84,6 +84,14 @@ docker compose up -d
 <details>
 <summary><b>Where to get Slack tokens</b></summary>
 
+<table>
+<tr><th width="50%">Create the preconfigured app</th><th width="50%">Allow it in your workspace</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/slack-create-app.jpg"><img src="archivebox_chat_bot/static/guides/slack-create-app.jpg" width="100%" alt="Our real Slack app creation flow with its preconfigured permissions and events"></a></td>
+<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/slack-install-workspace.png"><img src="archivebox_chat_bot/static/guides/slack-install-workspace.png" width="100%" alt="Our real ArchiveBox workspace installation with app permissions and the Allow button"></a></td>
+</tr>
+</table>
+
 - Install the app: [Slack app setup](https://docs.slack.dev/tools/bolt-js/creating-an-app/).
 - Copy the bot token: [Slack token types](https://docs.slack.dev/authentication/tokens/).
 - Generate the app token: [Socket Mode setup](https://docs.slack.dev/tools/python-slack-sdk/socket-mode/).
