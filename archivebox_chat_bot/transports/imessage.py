@@ -25,6 +25,11 @@ class IMessageTransport:
         scope = json.dumps([account_id, options.get("ssh_host"), options.get("ssh_user"), options.get("db_path")])
         self.cursor_path = Path(data_dir) / f"imessage-{hashlib.sha256(scope.encode()).hexdigest()[:24]}.json"
         self.cursor = json.loads(self.cursor_path.read_text()) if self.cursor_path.exists() else {}
+        self.own_handles = {
+            handle.casefold()
+            for handle in [*options.get("own_handles", []), *self.cursor.get("own_handles", [])]
+            if handle
+        }
 
     def _command(self):
         args = [self.options.get("imsg_path", "imsg"), "rpc"]
@@ -170,7 +175,17 @@ class IMessageTransport:
                 rowid, guid = message.get("id"), message.get("guid")
                 if not rowid or not guid or not message.get("chat_id"):
                     raise RuntimeError("imsg emitted a message without stable IDs")
-                if not message.get("is_from_me") and not message.get("is_reaction"):
+                sender = message.get("sender", "").casefold()
+                local_handle = (message.get("destination_caller_id") or "").casefold()
+                if message.get("is_from_me") and local_handle:
+                    # Outgoing `sender` is a raw database handle and may identify
+                    # the recipient. Only the documented local routing identity
+                    # is safe to learn as our own address.
+                    self.own_handles.add(local_handle)
+                # Self chats produce a second incoming row with a DIFFERENT GUID.
+                # There is no public API link to distinguish that echo from local
+                # human input; exclude known local handles instead of matching text.
+                if not message.get("is_from_me") and sender not in self.own_handles and not message.get("is_reaction"):
                     text = message.get("text") or ""
                     mention = self.options.get("mention", "@archivebox")
                     await self.emit(
@@ -189,7 +204,7 @@ class IMessageTransport:
                         }
                     )
                 # Advance only after core has durably accepted the event.
-                self.cursor = {"rowid": int(rowid), "guid": guid}
+                self.cursor = {"rowid": int(rowid), "guid": guid, "own_handles": sorted(self.own_handles)}
                 self.cursor_path.parent.mkdir(parents=True, exist_ok=True)
                 temporary = self.cursor_path.with_suffix(".tmp")
                 temporary.write_text(json.dumps(self.cursor))

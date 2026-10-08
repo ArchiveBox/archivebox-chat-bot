@@ -40,8 +40,10 @@ const providers = {
   whatsapp: {
     name: "WhatsApp",
     icon: "◉",
-    blurb: "Pair with a QR code",
-    fields: [],
+    blurb: "Agent key or group pairing",
+    fields: [["transport", "Connection type", "select", ["agent", "baileys"]]],
+    agent: [["api_key", "WhatsApp agent API key", "password"]],
+    baileys: [],
     advanced: [
       ["username", "Mention name"],
       ["phone_number", "Phone number for pairing code"],
@@ -75,6 +77,7 @@ const providers = {
       ["server", "IRC server"],
       ["port", "Port", "number"],
       ["tls", "Use TLS", "checkbox"],
+      ["channels", "Channels to join", "list"],
     ],
     fields: [["nickname", "Bot nickname"]],
     advanced: [
@@ -95,6 +98,7 @@ const providers = {
       ["ssh_identity_file", "SSH key file"],
       ["ssh_known_hosts_file", "SSH known hosts file"],
       ["imsg_path", "imsg executable"],
+      ["own_handles", "Mac phone numbers or email addresses", "list"],
       ["db_path", "Messages database"],
     ],
   },
@@ -163,18 +167,27 @@ function field(parent, spec, obj) {
     for (const choice of choices) {
       const o = el(
         "option",
-        choice === "page"
-          ? "Facebook Page"
-          : choice === "matrix"
-            ? "Personal groups via Matrix"
-            : choice,
+        choice === "agent"
+          ? "WhatsApp agent · API key"
+          : choice === "baileys"
+            ? "Groups & DMs · QR pairing"
+            : choice === "page"
+              ? "Facebook Page"
+              : choice === "matrix"
+                ? "Personal groups via Matrix"
+                : choice,
       );
       o.value = choice;
       input.append(o);
     }
-  } else input.type = type;
+  } else input.type = type === "list" ? "text" : type;
   if (type === "checkbox") input.checked = Boolean(obj[key]);
-  else input.value = obj[key] ?? "";
+  else
+    input.value =
+      type === "list"
+        ? (obj[key] || []).join(", ")
+        : (obj[key] ?? (type === "select" ? choices[0] : ""));
+  if (type === "select" && !obj[key]) obj[key] = choices[0];
   if (type === "password" && obj.configured_secrets?.includes(key))
     input.placeholder = "Connected · leave blank to keep";
   input.autocomplete = type === "password" ? "off" : "";
@@ -185,12 +198,18 @@ function field(parent, spec, obj) {
         ? input.checked
         : type === "number"
           ? Number(input.value)
-          : input.value.trim();
+          : type === "list"
+            ? input.value.split(/[\s,]+/).filter(Boolean)
+            : input.value.trim();
     if (key === "bot_token" && editing.platform === "telegram") {
       const token = input.value.match(/\b\d{6,}:[A-Za-z0-9_-]{25,}\b/);
       if (token) obj[key] = token[0];
     }
-    if (key === "transport" && editing.platform === "messenger") renderEditor();
+    if (
+      key === "transport" &&
+      ["messenger", "whatsapp"].includes(editing.platform)
+    )
+      renderEditor();
   };
   l.append(input);
   parent.append(l);
@@ -341,6 +360,16 @@ async function edit(id, r = "capture", platform) {
         ai_allowed_users: [],
         commands: ["help", "save", "search", "status", "auto"],
       };
+  if (id) {
+    try {
+      const result = await api(
+        `/api/connections/${id}/conversations?role=${r}`,
+      );
+      current.groups[id] = result.channels;
+    } catch {
+      /* A disconnected account can still be edited. */
+    }
+  }
   editing.people = id
     ? (await api(`/api/connections/${id}/people`)).people
     : [];
@@ -393,7 +422,9 @@ function renderEditor() {
     box.append(
       el(
         "p",
-        "Save & connect, then scan the code in WhatsApp → Linked devices.",
+        (account.options.transport || "agent") === "agent"
+          ? "WhatsApp → Settings → Agents → copy your agent key."
+          : "Save & connect, then scan the code in WhatsApp → Linked devices.",
         "muted",
       ),
     );
@@ -416,8 +447,11 @@ function renderEditor() {
   const creds = el("div", undefined, "form-grid");
   box.append(creds);
   for (const f of p.fields) field(creds, f, account.options);
-  if (editing.platform === "messenger")
-    for (const f of p[account.options.transport || "page"])
+  if (["messenger", "whatsapp"].includes(editing.platform))
+    for (const f of p[
+      account.options.transport ||
+        (editing.platform === "whatsapp" ? "agent" : "page")
+    ])
       field(creds, f, account.options);
   if (status(editing, role).state === "pairing") {
     if (status(editing, role).qr) {
@@ -574,25 +608,21 @@ function renderJobs(jobs) {
     if (job.error) main.append(el("div", job.error, "job-error"));
     row.append(el("span", job.state, "job-state " + job.state), main);
     if (job.session_url) row.append(link("Open session ↗", job.session_url));
-    if (["uncertain", "failed"].includes(job.state))
-      row.append(
-        button("Review & retry", async () => {
-          if (
-            confirm(
-              "Have you checked the destination and confirmed no remote crawl, session, or message was created?",
-            )
-          ) {
-            await api("/api/jobs/retry", {
-              method: "POST",
-              body: JSON.stringify({
-                id: job.id,
-                confirmed_remote_absent: true,
-              }),
-            });
-            await refresh();
-          }
-        }),
-      );
+    if (job.state === "uncertain" && job.session_id) {
+      row.append(button("Recover answer", async () => {
+        if (confirm("Check the conversation first. Has the agent's final answer not been delivered? This reads the existing session without repeating its task.")) {
+          await api("/api/jobs/resume", {method: "POST", body: JSON.stringify({id: job.id, confirmed_answer_absent: true})});
+          await refresh();
+        }
+      }));
+    } else if (["uncertain", "failed"].includes(job.state)) {
+      row.append(button("Review & retry", async () => {
+        if (confirm("Have you checked the destination and confirmed no remote crawl or message was created?")) {
+          await api("/api/jobs/retry", {method: "POST", body: JSON.stringify({id: job.id, confirmed_remote_absent: true})});
+          await refresh();
+        }
+      }));
+    }
     $("#jobs").append(row);
   }
 }
@@ -625,7 +655,7 @@ async function refresh() {
     ? `${connected} chat connections`
     : "Finish setup";
   $("#queue-summary").textContent =
-    `${state.stats.done || 0} completed · ${(state.stats.waiting || 0) + (state.stats.running || 0)} in progress · ${state.stats.uncertain || 0} need review`;
+    `${state.stats.done || 0} completed · ${(state.stats.waiting || 0) + (state.stats.running || 0) + (state.stats.agent_waiting || 0)} in progress · ${state.stats.uncertain || 0} need review`;
   $("#runtime-error").hidden = !state.error;
   $("#runtime-error").textContent = state.error;
   renderConnections();

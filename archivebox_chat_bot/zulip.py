@@ -85,6 +85,12 @@ class Zulip:
         self.bot_id, self.bot_name = str(result["user_id"]), result["full_name"]
         return {"bot_id": self.bot_id, "bot_name": self.bot_name}
 
+    async def channels(self):
+        result = await self._api("GET", "users/me/subscriptions")
+        return [
+            {"id": str(item["stream_id"]), "name": item["name"], "is_dm": False} for item in result["subscriptions"]
+        ]
+
     async def setup_channels(self) -> dict:
         channels = {}
         for field, enabled in (
@@ -353,12 +359,12 @@ class Zulip:
             ),
         ]
         if self.settings.upload_images:
-            for kind, (body, _mime) in media.items():
+            for kind, artifact in media.items():
                 result = await self._api(
                     "POST",
                     "user_uploads",
                     files={
-                        "filename": (f"{kind}.png", normalize_image(body, kind), "image/png"),
+                        "filename": (f"{kind}.png", normalize_image(artifact.data, kind), "image/png"),
                     },
                 )
                 label = {"screenshot": "📷", "favicon": "🌐"}[kind]

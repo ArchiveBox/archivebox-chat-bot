@@ -46,8 +46,10 @@ def create_app(directory=None):
 
     @asynccontextmanager
     async def lifespan(app):
-        await engine.start()
+        startup = asyncio.create_task(engine.initialize())
         yield
+        startup.cancel()
+        await asyncio.gather(startup, return_exceptions=True)
         await engine.close()
         store.close()
 
@@ -152,6 +154,7 @@ def create_app(directory=None):
                     "crawl_id": result.get("crawl_id", ""),
                     "session_id": result.get("session", {}).get("id", ""),
                     "session_url": result.get("session_url", ""),
+                    "answer_delivery_started": result.get("phase") == "agent_delivery",
                 }
             )
         return {
@@ -202,7 +205,7 @@ def create_app(directory=None):
                 result = await asyncio.wait_for(bot_for(connection_id, role).check(), timeout=15)
             else:
                 raise ValueError("Unknown service")
-            return {"ok": True, **result}
+            return {"ok": result.get("state", "connected") == "connected", **result}
         except Exception as exc:
             raise HTTPException(400, safe_error(exc)) from exc
         finally:
@@ -226,6 +229,21 @@ def create_app(directory=None):
             return {"ok": True, "channels": await bot.channels()}
         except Exception as exc:
             raise HTTPException(400, safe_error(exc)) from exc
+
+    @app.get("/api/connections/{connection_id}/conversations")
+    async def conversations(connection_id: str, role: str = "capture", session=admin_session):
+        bot = bot_for(connection_id, role)
+        try:
+            for channel in await bot.channels():
+                store.set_group(
+                    connection_id,
+                    str(channel["id"]),
+                    name=channel.get("name") or str(channel["id"]),
+                    is_dm=channel.get("is_dm", False),
+                )
+        except Exception as exc:
+            raise HTTPException(400, safe_error(exc)) from exc
+        return {"channels": store.groups(connection_id)}
 
     @app.get("/api/connections/{connection_id}/people")
     async def people(connection_id: str, session=admin_session):
@@ -290,7 +308,24 @@ def create_app(directory=None):
             raise HTTPException(400, "First confirm the remote crawl, session, or message was not created")
         if job["scope"] not in engine.scopes:
             raise HTTPException(409, "Restore this job's original server, workspace and channel before retrying")
+        if job["result"].get("session"):
+            raise HTTPException(
+                409, "An agent session already exists; recover its answer instead of repeating the task"
+            )
         store.update(job["id"], "queued")
+        return {"ok": True}
+
+    @app.post("/api/jobs/resume")
+    async def resume_agent(request: Request, session=admin_session):
+        data = await request.json()
+        job = store.get(data.get("id", ""))
+        if not job or job["state"] != "uncertain" or not job["result"].get("session"):
+            raise HTTPException(400, "Choose an interrupted agent session")
+        if job["scope"] not in engine.scopes:
+            raise HTTPException(409, "Reconnect the original server and bot first")
+        if job["result"].get("phase") != "agent_result" and data.get("confirmed_answer_absent") is not True:
+            raise HTTPException(400, "Check chat and confirm the answer was not already delivered")
+        store.update(job["id"], "agent_waiting", {**job["result"], "phase": "agent_result"})
         return {"ok": True}
 
     @app.get("/api/manifest/{role}")

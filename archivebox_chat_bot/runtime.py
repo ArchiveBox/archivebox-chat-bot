@@ -14,11 +14,17 @@ log = logging.getLogger(__name__)
 class Runtime:
     def __init__(self, store):
         self.store = store
+        self.settings = store.settings()
+        self.archive = ArchiveBox(self.settings)
         self.engines = {}
         self.adapters = Adapters(store)
         self.connections = {}
         self.error = ""
         self.lock = asyncio.Lock()
+
+    async def initialize(self):
+        async with self.lock:
+            await self.start()
 
     async def start(self):
         settings = self.store.settings()

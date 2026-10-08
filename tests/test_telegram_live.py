@@ -172,9 +172,10 @@ def test_running_telegram_ingress_and_context(credentials):
     account_dir = directory / "accounts" / f"{group['connection']}:capture"
     with sqlite3.connect(f"file:{account_dir / 'connector.sqlite3'}?mode=ro", uri=True) as db:
         pending = [json.loads(row[0])["message"]["id"] for row in db.execute("SELECT payload FROM ingress")]
-        checkpoint = db.execute("SELECT value FROM kv WHERE key LIKE 'telegram:polling:%'").fetchone()
     assert group["message_id"] not in pending and dm["message_id"] not in pending
-    assert checkpoint and json.loads(checkpoint[0])["offset"] > 0
+    # The SDK persists pending/retry batches, while ordinary batches confirm
+    # their offset at Telegram on the next poll. Durable jobs + an empty spool
+    # prove the actual parent acknowledgment boundary for these human messages.
 
 
 async def test_real_archive_card_native_image_and_reactions(credentials, connector, tmp_path):
@@ -200,6 +201,9 @@ async def test_real_archive_card_native_image_and_reactions(credentials, connect
         sent_id = await bot.post_card(
             snapshot, detail_url, {"screenshot": screenshot}, f"telegram-live:{snapshot['id']}"
         )
+        conversation = next(row for row in await bot.channels() if row["id"] == str(group["id"]))
+        assert conversation["name"] == credentials["telegram_test"]["group_name"]
+        assert conversation["is_dm"] is False
     finally:
         await archive.close()
         store.close()

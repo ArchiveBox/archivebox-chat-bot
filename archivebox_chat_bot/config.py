@@ -103,6 +103,27 @@ class Settings(BaseModel):
     def unique_connections(cls, value):
         if len({c.id for c in value}) != len(value):
             raise ValueError("Each connection needs a unique ID")
+        keys = set()
+        for connection in value:
+            if not connection.enabled:
+                continue
+            for role in ("capture", "ai"):
+                if not getattr(connection, role).enabled:
+                    continue
+                options = connection.account_options(role)
+                token = (
+                    options.get("bot_token")
+                    or options.get("api_key")
+                    or options.get("page_access_token")
+                    or options.get("access_token")
+                )
+                if token:
+                    identity = (connection.platform, options.get("url", ""), token)
+                    if identity in keys:
+                        raise ValueError(
+                            "Each active bot needs its own provider account key; disconnect its other role first"
+                        )
+                    keys.add(identity)
         return value
 
     @field_validator("archivebox_url", "archivebox_public_url", "archivebox_admin_url", "public_url")

@@ -170,6 +170,21 @@ class Slack:
         except SlackApiError as exc:
             self.last_error = exc.response.get("error", "Home tab failed")
 
+    async def channels(self):
+        found, cursor = [], None
+        while True:
+            response = await self.client.conversations_list(
+                limit=200, cursor=cursor, exclude_archived=True, types="public_channel,private_channel"
+            )
+            found.extend(
+                {"id": item["id"], "name": "#" + item["name"], "is_dm": False}
+                for item in response["channels"]
+                if item.get("is_member")
+            )
+            cursor = response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                return found
+
     async def setup_channels(self):
         result = {}
         for field in ("new_channel", "saved_channel"):
@@ -283,9 +298,11 @@ class Slack:
 
     async def post_card(self, snapshot, detail_url, media, delivery_id):
         files = {}
-        for kind, (data, _mime) in media.items():
+        for kind, artifact in media.items():
+            if kind != "screenshot":
+                continue
             response = await self.client.files_upload_v2(
-                file=normalize_image(data, kind),
+                file=normalize_image(artifact.data, kind),
                 filename=f"{kind}.png",
                 title=f"{snapshot.get('title') or snapshot['url']} · {kind}",
             )
@@ -309,8 +326,8 @@ class Slack:
         size = size_label(snapshot.get("output_size", 0))
         persona = slack_escape(" ".join((snapshot.get("persona") or "Default").split()))
         line = f"✅ *<{detail_url}|{title}>* · <{original}|{source}> · {size} · 👤 {persona}"
-        if files.get("favicon"):
-            line += f" · <{files['favicon']['permalink']}|🌐>"
+        if media.get("favicon"):
+            line += f" · <{media['favicon'].url}|🌐>"
         section = {"type": "section", "text": {"type": "mrkdwn", "text": line}}
         if files.get("screenshot"):
             section["accessory"] = {"type": "image", "slack_file": {"id": files["screenshot"]["id"]}, "alt_text": "📷"}

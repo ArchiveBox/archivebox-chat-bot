@@ -3,6 +3,7 @@
 import json
 import os
 import sqlite3
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -38,6 +39,12 @@ class Store:
                 connection TEXT NOT NULL, channel TEXT NOT NULL, name TEXT NOT NULL,
                 is_dm INTEGER NOT NULL DEFAULT 0, auto_archive INTEGER,
                 PRIMARY KEY(connection,channel));
+            CREATE TABLE IF NOT EXISTS identity_bindings (
+                connection TEXT NOT NULL, role TEXT NOT NULL, fingerprint TEXT NOT NULL,
+                PRIMARY KEY(connection,role));
+            CREATE TABLE IF NOT EXISTS identity_quarantine (
+                namespace TEXT PRIMARY KEY, connection TEXT NOT NULL, role TEXT NOT NULL,
+                previous_fingerprint TEXT NOT NULL, fingerprint TEXT NOT NULL, created_at TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS jobs_state ON jobs(state, created_at);
         """)
         if "scope" not in {row[1] for row in self.db.execute("PRAGMA table_info(jobs)")}:
@@ -58,6 +65,48 @@ class Store:
 
     def public_settings(self):
         return public_settings(self.settings().model_dump())
+
+    def bind_identity(self, connection: str, role: str, fingerprint: str):
+        """Bind verified source identity before reading policy/history or remembering.
+
+        Fingerprints must include the upstream server and authenticated account,
+        never credentials. Each role has its own binding; an account replacement
+        invalidates shared group policy conservatively. First binding quarantines
+        unknown legacy history, but adding the second role preserves newly bound
+        group policy. Quarantined rows remain recoverable using identity_quarantine.
+        """
+        if not connection or role not in ("capture", "ai") or not fingerprint:
+            raise ValueError("A connection, bot role and verified identity are required")
+        with self.db:
+            self.db.execute("BEGIN IMMEDIATE")
+            previous = self.db.execute(
+                "SELECT fingerprint FROM identity_bindings WHERE connection=? AND role=?",
+                (connection, role),
+            ).fetchone()
+            if previous and previous[0] == fingerprint:
+                return
+            reset_groups = (
+                previous is not None
+                or not self.db.execute(
+                    "SELECT 1 FROM identity_bindings WHERE connection=? LIMIT 1", (connection,)
+                ).fetchone()
+            )
+            namespace = "quarantine:" + uuid.uuid4().hex
+            moved_history = self.db.execute(
+                "UPDATE history SET connection=? WHERE connection=? AND role=?",
+                (namespace, connection, role),
+            ).rowcount
+            moved_groups = 0
+            if reset_groups:
+                moved_groups = self.db.execute(
+                    "UPDATE groups SET connection=? WHERE connection=?", (namespace, connection)
+                ).rowcount
+            if moved_history or moved_groups:
+                self.db.execute(
+                    "INSERT INTO identity_quarantine VALUES(?,?,?,?,?,?)",
+                    (namespace, connection, role, previous[0] if previous else "", fingerprint, now()),
+                )
+            self.db.execute("INSERT OR REPLACE INTO identity_bindings VALUES(?,?,?)", (connection, role, fingerprint))
 
     def remember(self, connection, message):
         with self.db:

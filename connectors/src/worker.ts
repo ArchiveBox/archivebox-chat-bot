@@ -339,10 +339,75 @@ class Account {
         m.author.userId,
         30 * 86400_000,
       );
-    this.state.db
-      .prepare("INSERT OR IGNORE INTO channels VALUES (?,?,?)")
-      .run(channel, channel, Number(isDM));
+    this.rememberChannel(
+      channel,
+      isDM,
+      m.raw,
+      isDM ? m.author.fullName || m.author.userName : undefined,
+    );
     await this.dispatch(deliveryId, event);
+  }
+  rememberChannel(
+    channel: string,
+    isDM: boolean,
+    raw?: unknown,
+    fallbackName?: string,
+  ) {
+    let name = fallbackName;
+    if (
+      this.adapter instanceof TelegramAdapter &&
+      raw &&
+      typeof raw === "object" &&
+      "chat" in raw
+    ) {
+      const chat = raw.chat as {
+        title?: string;
+        first_name?: string;
+        last_name?: string;
+        username?: string;
+      };
+      name =
+        chat.title ||
+        [chat.first_name, chat.last_name].filter(Boolean).join(" ") ||
+        chat.username ||
+        name;
+    }
+    this.state.db
+      .prepare(
+        "INSERT INTO channels VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET name=CASE WHEN excluded.name!=excluded.id THEN excluded.name ELSE channels.name END,is_dm=excluded.is_dm",
+      )
+      .run(channel, name || channel, Number(isDM));
+  }
+  async channels() {
+    const rows = this.state.db
+      .prepare("SELECT id,name,is_dm FROM channels ORDER BY id")
+      .all();
+    for (const row of rows) {
+      if (row.name !== row.id) continue;
+      try {
+        const channel = String(row.id);
+        const thread = this.thread(channel);
+        const sdkChannel =
+          this.adapter instanceof TelegramAdapter
+            ? channel
+            : (this.adapter.channelIdFromThreadId?.(thread) ?? channel);
+        const info = await this.adapter.fetchChannelInfo?.(sdkChannel);
+        if (!info) continue;
+        if (this.closing) break;
+        if (info.name) row.name = info.name;
+        if (info.isDM !== undefined) row.is_dm = Number(info.isDM);
+        this.state.db
+          .prepare("UPDATE channels SET name=?,is_dm=? WHERE id=?")
+          .run(row.name, row.is_dm, channel);
+      } catch {
+        // Discovery is optional: preserve the observed conversation and redact provider errors.
+        process.stderr.write("Connector conversation metadata unavailable\n");
+      }
+    }
+    return {
+      channels: rows.map((row) => ({ ...row, is_dm: Boolean(row.is_dm) })),
+      scope: "observed_conversations",
+    };
   }
   async dispatch(
     id: string,
@@ -488,13 +553,7 @@ async function handle(req: RequestMessage) {
   const account = accounts.get(req.account ?? "");
   if (!account) throw new SafeError("Unknown account");
   if (req.method === "check") return account.check();
-  if (req.method === "channels")
-    return {
-      channels: account.state.db
-        .prepare("SELECT id,name,is_dm FROM channels ORDER BY id")
-        .all(),
-      scope: "observed_conversations",
-    };
+  if (req.method === "channels") return account.channels();
   if (req.method === "join")
     throw new SafeError(
       "Invite the account using the platform; automatic joining is unavailable",
@@ -528,6 +587,8 @@ async function handle(req: RequestMessage) {
       account.thread(p.channel, p.thread),
       message,
     );
+    const isDM = account.adapter.isDM?.(sent.threadId) ?? false;
+    account.rememberChannel(p.channel, isDM, sent.raw);
     return { id: sent.id, channel: p.channel, thread: sent.threadId };
   }
   if (req.method === "react") {

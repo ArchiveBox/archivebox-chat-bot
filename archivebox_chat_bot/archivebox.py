@@ -4,6 +4,7 @@ import asyncio
 import base64
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
+from typing import NamedTuple
 from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
@@ -11,6 +12,12 @@ import httpx
 from .config import Settings
 
 MAX_ARTIFACT_BYTES = 10 * 1024 * 1024
+
+
+class Artifact(NamedTuple):
+    data: bytes
+    mimetype: str
+    url: str
 
 
 class ArchiveBox:
@@ -32,7 +39,7 @@ class ArchiveBox:
     def _response(response: httpx.Response):
         if not response.is_success:
             raise RuntimeError(f"ArchiveBox returned HTTP {response.status_code} for {response.request.url.path}")
-        return response.json()
+        return response.json() if response.status_code != 204 else None
 
     async def _request(self, method: str, path: str, **kwargs):
         headers = {"Authorization": f"Bearer {self.settings.archivebox_token}"}
@@ -210,7 +217,7 @@ class ArchiveBox:
         origin = urlsplit(self.admin_url)
         return {"Cookie": self._cookie, "Origin": f"{origin.scheme}://{origin.netloc}"}
 
-    async def artifact(self, snapshot: dict, kind: str) -> tuple[bytes, str] | None:
+    async def artifact(self, snapshot: dict, kind: str) -> Artifact | None:
         if kind not in {"screenshot", "favicon"}:
             raise ValueError("Choose screenshot or favicon")
         results = snapshot.get("archiveresults") or []
@@ -277,7 +284,10 @@ class ArchiveBox:
             actual_type = response.headers.get("content-type", mimetype).split(";", 1)[0]
             if actual_type == "text/html":
                 raise RuntimeError("ArchiveBox returned an HTML page instead of the requested image")
-            return b"".join(chunks), actual_type or "application/octet-stream"
+            public_url = (
+                self.settings.archivebox_public_url.rstrip("/") + f"/snapshot/{snapshot_id}/" + quote(path, safe="/")
+            )
+            return Artifact(b"".join(chunks), actual_type or "application/octet-stream", public_url)
 
     async def _agent_request(self, method: str, path: str, **kwargs):
         headers = await self._browser_headers()
@@ -296,21 +306,39 @@ class ArchiveBox:
             raise RuntimeError("OpenCode did not create a session in the configured ArchiveBox collection")
         return session
 
-    async def prompt_session(self, session: dict, prompt: str) -> str:
-        response = await self._agent_request(
+    async def submit_session(self, session: dict, prompt: str):
+        await self._agent_request(
             "POST",
-            f"session/{quote(session['id'], safe='')}/message",
+            f"session/{quote(session['id'], safe='')}/prompt_async",
             params={"directory": session["directory"]},
             json={"parts": [{"type": "text", "text": prompt}]},
-            timeout=httpx.Timeout(600, connect=30),
         )
+
+    async def session_answer(self, session: dict) -> str | None:
+        messages = await self._agent_request(
+            "GET",
+            f"session/{quote(session['id'], safe='')}/message",
+            params={"directory": session["directory"], "limit": 10},
+        )
+        if not messages or messages[-1].get("info", {}).get("role") != "assistant":
+            return None
+        response = messages[-1]
         if response.get("info", {}).get("error"):
             error = response["info"]["error"]
             raise RuntimeError(f"OpenCode could not complete the request ({error.get('name', 'agent error')})")
+        info = response["info"]
+        if not info.get("time", {}).get("completed") or info.get("finish") in {None, "tool-calls", "unknown"}:
+            return None
         texts = [part["text"] for part in response.get("parts", []) if part.get("type") == "text" and part.get("text")]
         if not texts:
             raise RuntimeError("OpenCode completed without a text response; inspect its session in ArchiveBox")
         return "\n\n".join(texts)
+
+    async def prompt_session(self, session: dict, prompt: str) -> str:
+        await self.submit_session(session, prompt)
+        while (answer := await self.session_answer(session)) is None:
+            await asyncio.sleep(1)
+        return answer
 
     async def abort_session(self, session: dict):
         return await self._agent_request(

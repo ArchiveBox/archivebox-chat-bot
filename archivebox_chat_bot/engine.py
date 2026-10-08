@@ -60,6 +60,36 @@ class Engine:
             identity_parts.append(self.connection.id)
         return hashlib.sha256(json.dumps(identity_parts).encode()).hexdigest()[:24]
 
+    def bind_source(self, role):
+        bot = self.bots.get(role)
+        identity = getattr(bot, "identity", {})
+        user = identity.get("user_id") or getattr(bot, "bot_id", "")
+        if not user:
+            return False
+        options = self.connection.account_options(role)
+        source = {
+            key: options.get(key)
+            for key in (
+                "url",
+                "server",
+                "port",
+                "tls",
+                "homeserver",
+                "transport",
+                "ssh_host",
+                "ssh_user",
+                "db_path",
+                "own_handles",
+            )
+        }
+        fingerprint = hashlib.sha256(
+            json.dumps([self.connection.platform, identity.get("team_id"), user, source], sort_keys=True).encode()
+        ).hexdigest()
+        self.store.bind_identity(self.connection.id, role, fingerprint)
+        if role == "capture" and not self.store.meta("sealed_cursor:" + self.scope()):
+            self.store.set_meta("sealed_cursor:" + self.scope(), now())
+        return True
+
     async def start(self):
         self.error = ""
         self.archive = ArchiveBox(self.settings)
@@ -70,12 +100,11 @@ class Engine:
                 bot = self.adapters.create(self.connection, role, self.settings)
                 self.bots[role] = bot
                 await bot.start(self.receive)
+                self.bind_source(role)
                 self.connections[role] = {"ok": True, "capabilities": getattr(bot, "capabilities", {})}
             except Exception as exc:
                 log.exception("Bot connection failed")
                 self.connections[role] = {"ok": False, "error": safe_error(exc)}
-        if not self.store.meta("sealed_cursor:" + self.scope()):
-            self.store.set_meta("sealed_cursor:" + self.scope(), now())
         self.loop = asyncio.create_task(self.run())
 
     async def close(self):
@@ -132,6 +161,8 @@ class Engine:
         return enabled
 
     async def receive(self, message):
+        if not self.bind_source(message.role):
+            raise RuntimeError("The connected bot identity is not available yet")
         message.connection = self.connection.id
         self.store.remember(self.connection.id, message)
         if self.permitted(message):
@@ -150,6 +181,8 @@ class Engine:
                     "queued", limit=100, scope=self.scope("ai")
                 )
                 for job in sorted(queued, key=lambda row: row["payload"].get("command") != "__stop"):
+                    if not self.bind_source(job["payload"].get("role", "capture")):
+                        continue
                     if job["payload"].get("command") == "__stop":
                         await self.stop_agent(job)
                         continue
@@ -166,6 +199,7 @@ class Engine:
                 if asyncio.get_running_loop().time() - last_poll >= self.settings.poll_seconds:
                     last_poll = asyncio.get_running_loop().time()
                     await self.monitor()
+                    await self.monitor_agents()
                     await self.discover()
             except asyncio.CancelledError:
                 raise
@@ -180,7 +214,9 @@ class Engine:
         if not bot or message.user not in self.connection.ai_allowed_users:
             self.store.update(stop_job["id"], "ignored")
             return
-        for job in self.store.jobs("running", scope=self.scope("ai")):
+        for job in self.store.jobs("running", scope=self.scope("ai")) + self.store.jobs(
+            "agent_waiting", scope=self.scope("ai")
+        ):
             payload = job["payload"]
             if (
                 payload.get("role") == "ai"
@@ -271,14 +307,10 @@ class Engine:
                     f"Request from {name} ({message.user}) on {message.platform}. Earlier conversation is context; "
                     f"the final message is the current request.\n<conversation>\n{text}\n</conversation>"
                 )
-                answer = await self.archive.prompt_session(session, prompt)
-                await bot.post_text(message, answer)
-                if message.platform == "slack":
-                    await bot.agent_status(message, "active")
-                self.store.update(
-                    job["id"], "done", {"session": session, "session_url": self.archive.session_url(session)}
-                )
-                await self.reaction(bot, message, "white_check_mark")
+                result = {"session": session, "session_url": self.archive.session_url(session), "phase": "agent_result"}
+                self.store.update(job["id"], "running", result)
+                await self.archive.submit_session(session, prompt)
+                self.store.update(job["id"], "agent_waiting", result)
                 return
             urls = extract_urls(text)
             if not urls:
@@ -362,6 +394,49 @@ class Engine:
             raise ValueError("Unknown command")
         await bot.post_text(message, text)
 
+    async def monitor_agents(self):
+        jobs = self.store.jobs("agent_waiting", scope=self.scope("ai"))
+        # A lost submit acknowledgment can be reconciled by reading the existing
+        # session. Never submit the prompt again or replay an ambiguous delivery.
+        jobs += [
+            job
+            for job in self.store.jobs("uncertain", scope=self.scope("ai"))
+            if job["result"].get("phase") == "agent_result"
+        ]
+        for job in jobs:
+            message = Message(**job["payload"])
+            bot = self.bots.get("ai")
+            if not bot or not self.permitted(message):
+                continue
+            result = job["result"]
+            try:
+                answer = await self.archive.session_answer(result["session"])
+                if answer is None:
+                    continue
+                result = {**result, "answer": answer, "phase": "agent_delivery"}
+                self.store.update(job["id"], "running", result)
+                sent = await bot.post_text(message, answer)
+                self.store.update(job["id"], "done", {**result, "message_id": sent})
+                await self.reaction(bot, message, "white_check_mark")
+                if message.platform == "slack":
+                    await bot.agent_status(message, "active")
+            except asyncio.CancelledError:
+                if result.get("phase") == "agent_delivery":
+                    self.store.update(
+                        job["id"],
+                        "uncertain",
+                        result,
+                        error="Answer delivery interrupted; inspect chat before retrying.",
+                    )
+                raise
+            except Exception as exc:
+                log.exception("Agent result reconciliation failed")
+                if self.store.get(job["id"])["state"] == "done":
+                    self.error = safe_error(exc)
+                    continue
+                self.store.update(job["id"], "uncertain", result, error=safe_error(exc))
+                self.error = safe_error(exc)
+
     async def monitor(self):
         for job in self.store.jobs("waiting", limit=100, scope=self.scope()):
             if job["payload"]["platform"] != self.connection.platform:
@@ -429,6 +504,7 @@ class Engine:
             not self.connection.enable_saved_urls
             or not self.connection.saved_channel
             or not self.settings.archivebox_token
+            or not self.bind_source("capture")
         ):
             return
         cursor = self.store.meta("sealed_cursor:" + self.scope())

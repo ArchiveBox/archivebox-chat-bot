@@ -47,9 +47,11 @@ async def test_real_screenshot_download(archivebox):
     assert snapshots, "Capture a screenshot in the disposable collection first"
     image = await archivebox.artifact(snapshots[0], "screenshot")
     assert image is not None
-    data, mimetype = image
+    data, mimetype, url = image
     assert data.startswith(b"\x89PNG\r\n\x1a\n")
     assert mimetype == "image/png"
+    response = await archivebox._browser.get(url, headers=await archivebox._browser_headers())
+    assert response.status_code == 200 and response.content == data
 
 
 async def test_real_server_base_url_discovers_api_host():

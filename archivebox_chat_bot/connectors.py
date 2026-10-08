@@ -69,6 +69,8 @@ class ConnectorWorker:
                     self.deliveries.add(task)
                     task.add_done_callback(self.deliveries.discard)
         finally:
+            for account in self.receivers:
+                self.status[account] = {"state": "error", "detail": "Chat connector stopped; reconnect this account"}
             for future in self.pending.values():
                 if not future.done():
                     future.set_exception(RuntimeError("Chat connector stopped; inspect connection status"))
@@ -167,10 +169,17 @@ class TransportBot:
             "team_id": self.options.get("server") or self.options.get("homeserver", ""),
         }
         self.capabilities = result.get("capabilities", {})
+        if result.get("state", "connected") != "connected":
+            self.identity = {}
+        self.username = result.get("username") or self.options.get("username", "")
         return result
 
     async def receive(self, raw):
         await self.ready.wait()
+        if self.transport or not self.identity.get("user_id"):
+            await self.check()
+        if not self.identity.get("user_id"):
+            raise RuntimeError("The connected bot identity is not available yet")
         message = Message(
             platform=self.settings.platform,
             role=self.role,
@@ -185,6 +194,10 @@ class TransportBot:
             is_bot=raw.get("is_bot", False),
         )
         self.users[message.user] = {"name": message.user_name, "is_bot": message.is_bot, "is_guest": False}
+        if self.settings.platform == "telegram" and message.text.startswith("/"):
+            addressed = re.match(r"^/\w+@([\w]+)(?:\s|$)", message.text)
+            if addressed and addressed[1].lower() != self.username.lstrip("@").lower():
+                return
         # Native slash command suffixes identify Telegram bots in shared groups.
         command = re.match(
             r"^/(?:archivebox(?:@\w+)?\s+)?(help|save|search|status|auto)(?:@\w+)?(?:\s+(.*))?$",
@@ -199,8 +212,8 @@ class TransportBot:
         if user_id in self.users:
             return self.users[user_id]
         row = self.store.db.execute(
-            "SELECT user_name,is_bot FROM history WHERE connection=? AND user_id=? ORDER BY seq DESC LIMIT 1",
-            (self.settings.id, user_id),
+            "SELECT user_name,is_bot FROM history WHERE connection=? AND role=? AND user_id=? ORDER BY seq DESC LIMIT 1",
+            (self.settings.id, self.role, user_id),
         ).fetchone()
         return {"name": row[0] if row else user_id, "is_bot": bool(row[1]) if row else False, "is_guest": False}
 
@@ -238,16 +251,20 @@ class TransportBot:
 
     async def post_card(self, snapshot, detail_url, media, client_id):
         title = " ".join((snapshot.get("title") or snapshot["url"]).split())[:100]
-        text = f"✅ [{title}]({detail_url}) · {snapshot['url']} · {size_label(snapshot.get('output_size', 0))} · 👤 {snapshot.get('persona') or 'Default'}"
+        markdown = self.settings.platform == "telegram" or self.options.get("transport") == "matrix"
+        headline = f"[{title}]({detail_url})" if markdown else f"{title} — {detail_url}"
+        text = f"✅ {headline} · {snapshot['url']} · {size_label(snapshot.get('output_size', 0))} · 👤 {snapshot.get('persona') or 'Default'}"
+        if favicon := media.get("favicon"):
+            text += f" · [🌐]({favicon.url})" if markdown else f" · 🌐 {favicon.url}"
         files = []
-        if self.capabilities.get("media"):
-            for kind, artifact in media.items():
-                data = normalize_image(artifact[0], kind)
-                files.append(
-                    {"filename": f"{kind}.png", "mimetype": "image/png", "data": base64.b64encode(data).decode()}
-                )
-        else:
-            text = f"✅ {title} — {detail_url} · {snapshot['url']} · {size_label(snapshot.get('output_size', 0))} · 👤 {snapshot.get('persona') or 'Default'}"
+        if self.capabilities.get("media") and (screenshot := media.get("screenshot")):
+            files.append(
+                {
+                    "filename": "screenshot.png",
+                    "mimetype": "image/png",
+                    "data": base64.b64encode(normalize_image(screenshot.data, "screenshot")).decode(),
+                }
+            )
         result = await self.call("send", channel=self.settings.saved_channel, text=text, media=files)
         return result.get("id", "") if isinstance(result, dict) else result
 
@@ -296,7 +313,7 @@ class Adapters:
                             "data_dir": str(self.store.directory.resolve() / "accounts" / f"{connection.id}:{role}"),
                         }
                     )
-        if accounts and not self.worker.process:
+        if accounts and (not self.worker.process or self.worker.process.returncode is not None):
             await self.worker.start()
         if self.worker.process:
             await self.worker.call("configure", params={"accounts": accounts})
