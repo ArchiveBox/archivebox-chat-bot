@@ -327,7 +327,7 @@ docker compose up -d
 - **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
 - **Personal account:** enable **Archive my own messages** for capture in selected chats, including Signal Note to Self. Bot replies are tracked separately so they are not captured again; this option does not enable AI replies to your own messages.
 
-<p><strong>Live Signal check (2026-10-08):</strong> Real Signal Desktop messages in Note to Self and the dedicated ArchiveBox Cabbage Test group each queued two Ars Technica URLs through Beeper. These captures are still waiting in Cabbage's ArchiveBox queue. The group also receives Saved URLs notifications from the collection; those notifications are not proof that the pending Signal captures completed.</p>
+<p><strong>Live Signal check (2026-10-08):</strong> Real Signal Desktop messages in Note to Self and the dedicated ArchiveBox Cabbage Test group produced eight saved URLs through Beeper. The DM and group capture jobs finished, and their own snapshots were verified as sealed. Ars Technica returned <code>403 Forbidden</code>: the saved outputs contain that response, not the article bodies. The group screenshot below shows the saved notification for its own capture, matched to its snapshot ID.</p>
 
 <table>
 <tr><th width="50%">Signal DM and queue acknowledgement</th><th width="50%">Signal group submission</th></tr>
@@ -336,6 +336,10 @@ docker compose up -d
 <td width="50%" valign="top"><a href="screenshots/signal-group-request-cabbage.png"><img src="screenshots/signal-group-request-cabbage.png" width="100%" alt="Real Signal group message containing two Ars Technica URLs with the bot's processing reaction"></a></td>
 </tr>
 </table>
+
+<p><a href="screenshots/signal-group-saved-cabbage.png"><img src="screenshots/signal-group-saved-cabbage.png" width="100%" alt="Signal group showing its own completed Ars Technica capture, saved replay URL, and the 403 Forbidden response"></a></p>
+
+<p><a href="screenshots/signal-console-saved-cabbage.jpg"><img src="screenshots/signal-console-saved-cabbage.jpg" width="100%" alt="Cabbage console showing Signal connected with eight saved URLs"></a></p>
 
 <details>
 <summary><b>Docker → Beeper address</b></summary>
