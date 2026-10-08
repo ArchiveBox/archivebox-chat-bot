@@ -8,6 +8,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/opt/archivebox.demo
 Environment=DEPLOY_INTERVAL=60
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/linuxbrew/.linuxbrew/bin
 ExecStart=/opt/archivebox.demo/bin/watch_chatbot_image.sh
 Restart=always
 RestartSec=60
