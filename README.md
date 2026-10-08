@@ -370,6 +370,30 @@ uv run ruff check .
 
 </details>
 
+#### Terms of Service
+
+Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
+
+- **Self-hosted:** each deployment is run by its operator, who controls access, configuration, storage, and availability. Installing a Discord app does not provision an ArchiveBox server.
+- **Authorized use:** archive only content you are entitled to access and preserve; respect applicable laws, content rights, and your chat provider's rules. Operators must inform participants when automatic capture is enabled.
+- **Your responsibility:** protect credentials and backups, choose who can use the bots, and review AI actions and results. Captures and AI answers may be incomplete or incorrect.
+- **License:** the software is provided under the [MIT License](LICENSE), including its warranty disclaimer and limitation of liability. No hosted service, uptime guarantee, or paid subscription is included.
+- **Stop using it:** disconnect the bots and revoke their credentials. Existing archives, sessions, messages, and backups require separate deletion by their operators.
+- **Help:** [project issues](https://github.com/ArchiveBox/archivebox-chat-bot/issues) · [ArchiveBox community](https://zulip.archivebox.io). For a particular deployment or data-removal request, contact the person or organization operating that bot.
+
+#### Privacy Policy
+
+Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
+
+- **Data received:** message text, sender names/identifiers, conversation names/identifiers, and message/thread identifiers made available by the connected provider. Email capture also reads message subjects and supported attachment text.
+- **Local storage:** the operator's data directory stores credentials, configuration, recent conversation history, and job requests/results/errors. Received messages can enter history even when capture permissions prevent archiving. Active history retains up to 200 messages per connection, bot, and conversation; jobs, disconnected-account data, and backups have no automatic expiry.
+- **Capture:** extracted URLs and source tags (provider, sender, channel/group) go to the configured ArchiveBox server. That server contacts archived websites and any services enabled by its operator. Capture cards, screenshots, favicons, search results, and replies can be posted to the configured chat destinations and become visible to their members.
+- **Optional AI:** trusted users' requests and conversation context go to the configured ArchiveBox/OpenCode service and its configured model providers and tools. These services have their own processing and retention policies. AI is disabled until configured and enabled.
+- **Security:** the database uses restrictive filesystem permissions; stored credentials are not encrypted by the application. The Chatbot Admin Console password is hashed. Operational logs can contain errors and exceptions. Operators must protect the host, data directory, backups, and remote connections.
+- **No built-in advertising or analytics:** the bot does not send usage analytics to ArchiveBox maintainers. Chat providers, hosting services, archived websites, and optional AI services process data under their own policies.
+- **Access and deletion:** contact the deployment operator to request access, correction, or deletion of retained data and backups. Disconnecting/revoking credentials stops further access; deleting bot data does not delete ArchiveBox snapshots, OpenCode sessions, or messages already posted to chat. Those must be removed separately in their respective systems.
+- **Questions:** contact the deployment operator first. Project support is available through [ArchiveBox community](https://zulip.archivebox.io) or [issues](https://github.com/ArchiveBox/archivebox-chat-bot/issues); do not post private messages or credentials in public support channels. Revisions to this policy appear here with an updated date.
+
 <a id="archivebox-ai-bot"></a>
 
 ## 🧠 ArchiveBox AI Bot
