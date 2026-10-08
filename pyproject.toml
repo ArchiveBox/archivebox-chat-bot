@@ -1,7 +1,7 @@
 [project]
 name = "archivebox-chat-bot"
 version = "0.1.0"
-description = "ArchiveBox Bot and ArchiveBox AI Bot across Slack, Discord, Zulip, Telegram, WhatsApp, IRC, iMessage, and Messenger."
+description = "ArchiveBox Bot and ArchiveBox AI Bot across Slack, Discord, Zulip, Telegram, WhatsApp, IRC, iMessage, Messenger, and inbound email."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"

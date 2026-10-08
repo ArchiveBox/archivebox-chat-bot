@@ -176,3 +176,31 @@ def test_discord_setup_requires_token_and_valid_role(console):
     assert invalid.status_code == 422
     state = console.get("/api/state").json()
     assert state["settings"]["connections"] == []
+
+
+def test_email_is_inbound_only_and_keeps_password_private(console):
+    login(console)
+    connection = {
+        "id": "email",
+        "platform": "email",
+        "enabled": False,
+        "capture": {
+            "enabled": True,
+            "options": {
+                "host": "imap.example.org",
+                "username": "archive@example.org",
+                "password": "private-app-password",
+            },
+        },
+        "allowed_users": ["Alice@Example.org"],
+    }
+    response = console.put("/api/settings", json={"connections": [connection]})
+    assert response.status_code == 200
+    actual = response.json()["settings"]["connections"][0]
+    assert actual["enable_saved_urls"] is False and actual["enable_mentions"] is False
+    assert actual["commands"] == [] and actual["allowed_users"] == ["alice@example.org"]
+    assert actual["capture"]["options"]["password"] == ""
+    assert "private-app-password" not in console.get("/api/state").text
+    connection["ai"] = {"enabled": True}
+    rejected = console.put("/api/settings", json={"connections": [connection]})
+    assert rejected.status_code == 422 and "inbound-only" in rejected.text

@@ -140,6 +140,10 @@ class TransportBot:
                 from .transports.discord import DiscordTransport
 
                 adapter = DiscordTransport
+            elif connection.platform == "email":
+                from .transports.email import EmailTransport
+
+                adapter = EmailTransport
             elif connection.platform == "irc":
                 from .transports.irc import IRCTransport
 

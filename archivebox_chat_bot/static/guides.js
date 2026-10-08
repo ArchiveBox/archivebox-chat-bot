@@ -1,5 +1,22 @@
 // Shared by both bot roles. Images are real provider UI; external examples retain attribution.
 const setupGuides = {
+  email: [
+    {
+      title: "Choose your bot's inbox",
+      text: "Use a dedicated mailbox such as archive@your-domain.com, or a folder populated by your mail provider's forwarding rule. Email, forward, or CC that address.",
+      docs: [["Gmail forwarding", "https://support.google.com/mail/answer/10957"], ["Fastmail forwarding", "https://www.fastmail.help/hc/en-us/articles/360058753434-Set-up-mail-forwarding"]],
+    },
+    {
+      title: "Connect with an app password",
+      text: "Enter the mailbox address, IMAP server, and its app password. TLS on port 993 is selected for you. Gmail, iCloud, and Fastmail addresses fill their server automatically.",
+      docs: [["Gmail app passwords", "https://support.google.com/accounts/answer/185833"], ["iCloud IMAP settings", "https://support.apple.com/en-us/102525"], ["Fastmail IMAP settings", "https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports"]],
+    },
+    {
+      title: "Email your first links",
+      text: "Save & connect → email or forward a conversation → open Activity or ArchiveBox. New mail is checked every 30 seconds. Enable Import existing emails before connecting to include older mail.",
+      docs: [["Gmail IMAP access", "https://support.google.com/mail/answer/7126229"]],
+    },
+  ],
   discord: [
     {
       title: "Create your Discord bot",

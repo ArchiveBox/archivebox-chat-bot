@@ -35,6 +35,23 @@ const providers = {
     blurb: "Servers, threads, DMs",
     advanced: [],
   },
+  email: {
+    name: "Email",
+    icon: "✉",
+    blurb: "Forward or CC · inbound IMAP",
+    fields: [
+      ["username", "Mailbox email address", "email"],
+      ["password", "Mailbox app password", "password"],
+      ["host", "IMAP server"],
+    ],
+    advanced: [
+      ["folder", "Mailbox folder"],
+      ["tls_mode", "Encryption", "select", ["tls", "starttls"]],
+      ["port", "IMAP port", "number"],
+      ["poll_seconds", "Check for mail every (seconds)", "number"],
+      ["max_message_mb", "Maximum email size (MB)", "number"],
+    ],
+  },
   zulip: {
     name: "Zulip",
     icon: "≋",
@@ -190,6 +207,8 @@ function field(parent, spec, obj) {
               ? "Facebook Page"
               : choice === "matrix"
                 ? "Personal groups via Matrix"
+                : choice === "tls" ? "TLS · usually port 993"
+                : choice === "starttls" ? "STARTTLS · usually port 143"
                 : choice,
       );
       o.value = choice;
@@ -227,6 +246,18 @@ function field(parent, spec, obj) {
     if (key === "bot_token" && editing.platform === "telegram") {
       const token = input.value.match(/\b\d{6,}:[A-Za-z0-9_-]{25,}\b/);
       if (token) obj[key] = token[0];
+    }
+    if (editing.platform === "email" && key === "username" && !obj.host) {
+      const domain = obj[key].split("@")[1]?.toLowerCase();
+      const host = {"gmail.com": "imap.gmail.com", "googlemail.com": "imap.gmail.com", "icloud.com": "imap.mail.me.com", "me.com": "imap.mail.me.com", "mac.com": "imap.mail.me.com", "fastmail.com": "imap.fastmail.com"}[domain];
+      if (host) {
+        obj.host = host;
+        $("#connection-form").elements.host.value = host;
+      }
+    }
+    if (editing.platform === "email" && key === "tls_mode") {
+      obj.port = obj[key] === "starttls" ? 143 : 993;
+      $("#connection-form").elements.port.value = obj.port;
     }
     if (editing.platform === "slack" && ["bot_token", "app_token"].includes(key)) {
       const tokens = input.value.match(/\b(?:xoxb|xapp)-[A-Za-z0-9-]+/g) || [];
@@ -309,7 +340,7 @@ function renderConnections() {
       el("h3", `${p.icon} ${name(c)}`),
       el(
         "p",
-        `${statusText(status(c, c.capture.enabled ? "capture" : "ai"))} · ${c.ai.enabled ? "AI enabled" : "AI optional"}`,
+        `${statusText(status(c, c.capture.enabled ? "capture" : "ai"))} · ${c.platform === "email" ? "Inbound email" : c.ai.enabled ? "AI enabled" : "AI optional"}`,
       ),
     );
     row.append(
@@ -318,6 +349,7 @@ function renderConnections() {
     );
     $("#connected").append(row);
     for (const r of ["capture", "ai"]) {
+      if (c.platform === "email" && r === "ai") continue;
       const panel = el("article", undefined, "panel");
       const heading = el("div", undefined, "panel-heading");
       heading.append(
@@ -329,7 +361,9 @@ function renderConnections() {
         ),
       );
       panel.append(heading);
-      if (r === "capture") {
+      if (c.platform === "email") {
+        panel.append(el("p", `Email or CC ${c.capture.options.username || "your bot address"} → URLs saved in ArchiveBox. Check Activity for captures.`, "muted"));
+      } else if (r === "capture") {
         const groups = (current.groups[c.id] || []).filter((g) => !g.is_dm);
         if (groups.length) {
           for (const g of groups) {
@@ -392,7 +426,7 @@ async function edit(id, r = "capture", platform) {
         name: providers[platform].name,
         enabled: true,
         options: platform === "irc" ? { port: 6697, tls: true } : platform === "beeper" ? { base_url: current.beeper_default_url } : {},
-        capture: { enabled: true, options: {} },
+        capture: { enabled: true, options: platform === "email" ? {port: 993, tls_mode: "tls", folder: "INBOX", poll_seconds: 30, max_message_mb: 25} : {} },
         ai: { enabled: false, options: {} },
         new_channel: "",
         saved_channel: "",
@@ -411,6 +445,8 @@ async function edit(id, r = "capture", platform) {
         ai_allowed_users: [],
         commands: ["help", "save", "search", "status", "auto"],
       };
+  if (editing.platform === "email")
+    editing.capture.options = {port: 993, tls_mode: "tls", folder: "INBOX", poll_seconds: 30, max_message_mb: 25, ...editing.capture.options};
   if (r === "ai") editing.ai.enabled = true;
   editing.people = [];
   dirty = false;
@@ -532,7 +568,7 @@ function renderEditor() {
   );
   if (["slack", "discord"].includes(editing.platform)) {
     if (role === "capture")
-      box.append(el("p", "Connect once → New URLs + Saved URLs are created automatically. Invite ArchiveBox Bot to any other channel you want to use.", "inline-note"));
+      box.append(el("p", editing.platform === "discord" ? "Connect once → New URLs + Saved URLs are created automatically. Use the bot in any channel it can access." : "Connect once → New URLs + Saved URLs are created automatically. Invite ArchiveBox Bot to any other channel you want to use.", "inline-note"));
     else
       box.append(el("p", `Use a separate ${p.name} app for ArchiveBox AI Bot. Choose who can run tasks under Trusted people below.`, "inline-note"));
     const options = el("details");
@@ -632,6 +668,15 @@ function renderEditor() {
   }
   const permissions = el("div", undefined, "form-grid");
   box.append(permissions);
+  if (editing.platform === "email") {
+    box.append(el("p", "Forward or CC this mailbox. URLs from the subject, body, quoted replies, and text/HTML/.eml attachments go to ArchiveBox. Messages stay unread; no email is sent.", "inline-note"));
+    field(permissions, ["include_existing", "Import existing emails on first connection", "checkbox"], account.options);
+    field(permissions, ["allowed_users", "Allowed sender addresses (optional)", "list"], editing);
+    box.append(el("p", "Leave blank to accept every sender. Sender filtering uses the From header; use your mail provider's rules for authenticated sender restrictions.", "muted"));
+    const advanced = section(box, "Advanced inbox settings");
+    for (const f of p.advanced) field(advanced, f, account.options);
+    return;
+  }
   if (role === "capture") {
     for (const [key, title] of [
       ["enable_mentions", "Save links when mentioned"],
@@ -777,12 +822,12 @@ async function saveConnection(close = true) {
   });
   dirty = false;
   await refresh();
-  if (["slack", "discord"].includes(value.platform) && value[role].enabled && !status(value, role).ok) {
+  if (["slack", "discord", "email"].includes(value.platform) && value[role].enabled && !status(value, role).ok) {
     $("#setup-guide").open = true;
     throw new Error(statusText(status(value, role)));
   }
   if (close) $("#editor").close();
-  toast(["slack", "discord"].includes(value.platform) && value[role].enabled ? `${providers[value.platform].name} connected. Send your bot a DM to get started.` : "Connection saved.");
+  toast(value.platform === "email" && value.capture.enabled ? "Inbox connected. Email or CC your bot address to save links." : ["slack", "discord"].includes(value.platform) && value[role].enabled ? `${providers[value.platform].name} connected. Send your bot a DM to get started.` : "Connection saved.");
 }
 function renderJobs(jobs) {
   $("#jobs").replaceChildren();

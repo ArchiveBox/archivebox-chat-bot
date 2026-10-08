@@ -8,7 +8,7 @@
 
 [ArchiveBox Bot](#archivebox-bot) · [ArchiveBox AI Bot](#archivebox-ai-bot) · [Setup](#connect-your-chat-apps)
 
-[Slack](#slack) · [Discord](#discord) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper)
+[Slack](#slack) · [Discord](#discord) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper) · [Email](#email)
 
 </div>
 
@@ -280,6 +280,18 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 - Token example: [Felix Krause](https://krausefx.com/blog/openclaw-my-automation-setup), earlier Beeper UI. Enable **Allow sensitive actions** for replies (off in that image).
 
 </details>
+
+---
+
+#### ✉️ Email
+
+- **Connect:** dedicated mailbox → IMAP server + address + app password → **Save & connect**.
+- **Send / forward / CC** → save links from the subject, body, quoted conversation, and text/HTML/`.eml` attachments.
+- **Tags:** `email,Nick Sweeting` · **Results:** ArchiveBox + **Activity**.
+- **Inbox:** checked every 30 seconds; new mail only by default. Optional first-connection import of existing mail.
+- **Inbound only:** no SMTP or replies; preserves read/unread flags. PDF, Office, and image attachments are not inspected or uploaded.
+
+[Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
 
 ---
 

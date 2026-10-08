@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-PLATFORMS = ("beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage")
+PLATFORMS = ("beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage", "email")
 
 
 def is_secret(key):
@@ -20,7 +20,9 @@ class Connection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = ""
-    platform: Literal["beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage"]
+    platform: Literal[
+        "beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage", "email"
+    ]
     enabled: bool = True
     options: dict = Field(default_factory=dict)
     capture: Account = Field(default_factory=lambda: Account(enabled=True))
@@ -46,6 +48,18 @@ class Connection(BaseModel):
 
     def account_options(self, role):
         return {**self.options, **getattr(self, role).options}
+
+    @model_validator(mode="after")
+    def inbound_email(self):
+        if self.platform == "email":
+            if self.ai.enabled:
+                raise ValueError("Email is inbound-only; use a chat provider for ArchiveBox AI Bot")
+            self.enable_saved_urls = self.enable_new_urls = self.enable_mentions = False
+            self.auto_archive_groups = False
+            self.new_channel = self.saved_channel = ""
+            self.commands = []
+            self.allowed_users = [address.strip().lower() for address in self.allowed_users]
+        return self
 
 
 class Settings(BaseModel):
@@ -111,6 +125,18 @@ class Settings(BaseModel):
                 if not getattr(connection, role).enabled:
                     continue
                 options = connection.account_options(role)
+                if connection.platform == "email":
+                    identity = (
+                        "email",
+                        options.get("host", "").lower(),
+                        int(options.get("port") or (143 if options.get("tls_mode") == "starttls" else 993)),
+                        options.get("username", "").lower(),
+                        options.get("folder") or "INBOX",
+                    )
+                    if identity in keys:
+                        raise ValueError("This email inbox is already connected; use one connection per mailbox folder")
+                    keys.add(identity)
+                    continue
                 if connection.platform == "beeper":
                     if options.get("account_id"):
                         identity = (
