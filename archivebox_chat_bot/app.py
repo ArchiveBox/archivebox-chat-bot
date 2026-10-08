@@ -1,6 +1,8 @@
 import asyncio
+import csv
 import hashlib
 import hmac
+import io
 import json
 import logging
 import os
@@ -22,8 +24,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .activity import ActivityHandler
 from .archivebox import ArchiveBox
 from .config import Settings, merge_settings
-from .engine import safe_error
+from .engine import HELP_TEXT, safe_error
 from .manifest import manifest
+from .models import Message
 from .runtime import Runtime
 from .store import Store
 
@@ -88,6 +91,8 @@ def create_app(directory=None):
                 level="error" if response.status_code >= 500 else "warning" if response.status_code >= 400 else "info",
                 status_code=response.status_code,
                 elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
+                connection=request.path_params.get("connection_id", ""),
+                role=request.path_params.get("role", ""),
             )
         response.headers.update(
             {
@@ -233,6 +238,7 @@ def create_app(directory=None):
             "stats": store.stats(),
             "connections": engine.status(),
             "groups": {c.id: store.groups(c.id) for c in store.settings().connections},
+            "connection_activity": {c.id: store.connection_activity(c.id) for c in store.settings().connections},
             "error": engine.error,
             "jobs": jobs,
             "beeper_default_url": "http://host.docker.internal:23373"
@@ -241,8 +247,8 @@ def create_app(directory=None):
         }
 
     @app.get("/api/events")
-    async def events(limit: int = 200, before: int | None = None, session=admin_session):
-        return {"events": store.events(limit=limit, before=before)}
+    async def events(limit: int = 200, before: int | None = None, connection: str | None = None, session=admin_session):
+        return {"events": store.events(limit=limit, before=before, connection=connection)}
 
     @app.put("/api/settings")
     async def save_settings(request: Request, session=admin_session):
@@ -426,11 +432,86 @@ def create_app(directory=None):
     @app.get("/api/connections/{connection_id}/people")
     async def people(connection_id: str, session=admin_session):
         connection(connection_id)
-        rows = store.db.execute(
-            "SELECT user_id AS id, MAX(user_name) AS name FROM history WHERE connection=? AND is_bot=0 GROUP BY user_id ORDER BY name",
-            (connection_id,),
-        ).fetchall()
-        return {"people": [dict(row) for row in rows]}
+        return {"people": store.people(connection_id)}
+
+    @app.get("/api/connections/{connection_id}/export.csv")
+    async def export_connection(connection_id: str, session=admin_session):
+        connection(connection_id)
+        output = io.StringIO(newline="")
+        fields = [
+            "created_at",
+            "role",
+            "kind",
+            "level",
+            "state",
+            "message",
+            "status_code",
+            "elapsed_ms",
+            "url",
+            "user",
+            "channel",
+            "crawl_id",
+        ]
+        writer = csv.DictWriter(output, fieldnames=fields)
+        writer.writeheader()
+        settings = store.settings().model_dump()
+        for row in store.export_connection(connection_id):
+            cleaned = {}
+            for key, value in row.items():
+                value = store.redact(value if value is not None else "", settings=settings)
+                # Prevent untrusted messages becoming spreadsheet formulas.
+                cleaned[key] = (
+                    "'" + value
+                    if value.lstrip().startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n"))
+                    else value
+                )
+            writer.writerow(cleaned)
+        return Response(
+            output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="connection-logs.csv"'},
+        )
+
+    @app.post("/api/connections/{connection_id}/test")
+    async def test_connection(connection_id: str, request: Request, session=admin_session):
+        config = connection(connection_id)
+        data = await request.json()
+        role, user = data.get("role", "capture"), str(data.get("user", ""))
+        if role not in ("capture", "ai"):
+            raise HTTPException(422, "Choose a bot role")
+        if not config.enabled or not getattr(config, role).enabled or config.platform == "email":
+            raise HTTPException(400, "This bot cannot send messages while disabled or inbound-only")
+        if user not in {p["id"] for p in store.people(connection_id)}:
+            raise HTTPException(400, "Choose a known user who has messaged this connection")
+        bot = bot_for(connection_id, role)
+        # Prefer an observed direct conversation; never send a private test to
+        # the group in which this person happened to be seen.
+        row = store.db.execute(
+            "SELECT h.channel FROM history h JOIN groups g ON g.connection=h.connection AND g.channel=h.channel "
+            "WHERE h.connection=? AND h.role=? AND h.user_id=? AND h.is_bot=0 AND g.is_dm=1 ORDER BY h.seq DESC LIMIT 1",
+            (connection_id, role, user),
+        ).fetchone()
+        channel = row[0] if row else ""
+        store.event("test", f"Test message requested for user {user}", connection=connection_id, role=role)
+        try:
+            if not channel:
+                if config.platform == "slack":
+                    channel = (await bot.client.conversations_open(users=user))["channel"]["id"]
+                elif config.platform == "discord":
+                    channel = str((await (await bot.transport.client.fetch_user(int(user))).create_dm()).id)
+                elif config.platform in ("telegram", "zulip", "whatsapp"):
+                    channel = user
+                else:
+                    raise ValueError("This user must start a direct conversation with this bot before receiving a test")
+            message = Message(config.platform, role, channel, user, "", "", is_dm=True, connection=connection_id)
+            message_id = await bot.post_text(
+                message, "ArchiveBox connection test · " + (config.name or config.platform) + "\n" + HELP_TEXT
+            )
+        except Exception as exc:
+            store.event("test", safe_error(exc), level="error", connection=connection_id, role=role)
+            raise HTTPException(400, safe_error(exc)) from exc
+        store.event("test", f"Test message delivered to user {user}", connection=connection_id, role=role)
+        return {"ok": True, "message_id": str(message_id or "")}
 
     @app.put("/api/connections/{connection_id}/groups")
     async def group_settings(connection_id: str, request: Request, session=admin_session):

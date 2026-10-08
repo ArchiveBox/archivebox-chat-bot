@@ -12,6 +12,7 @@ let csrf = "",
   eventRows = [],
   refreshing = false,
   probing = false;
+const cardSelections = new Map();
 const providers = {
   beeper: {
     name: "Beeper",
@@ -213,11 +214,43 @@ function link(text, href) {
   a.rel = "noreferrer";
   return a;
 }
+function fieldDefault(key) {
+  const defaults = {
+    imessage: {mention: "@archivebox", imsg_path: "imsg", ssh_port: 22},
+    irc: {nickname: "archivebox", port: editing?.options.tls === false ? 6667 : 6697, tls: true},
+    email: {folder: "INBOX", tls_mode: "tls", port: editing?.capture.options.tls_mode === "starttls" ? 143 : 993, poll_seconds: 30, max_message_mb: 25},
+    beeper: {base_url: current?.beeper_default_url || "http://127.0.0.1:23373"},
+  };
+  return defaults[editing?.platform]?.[key];
+}
+function fieldExample(key) {
+  const examples = {
+    name: "e.g. Team workspace", url: "https://chat.example.com", host: "imap.gmail.com",
+    email: "archivebox-bot@example.com", server: "irc.libera.chat", channels: "#new-urls, #saved-urls",
+    username: editing?.platform === "email" ? "archivebox@example.com" : "archivebox_bot",
+    bot_token: editing?.platform === "telegram" ? "123456789:AA…" : "Paste the bot token",
+    app_token: "xapp-…", history_token: "xoxp-…", api_key: "Paste the bot API key",
+    access_token: "Paste the API access token", client_id: "Your app's client ID",
+    client_secret: "Your app's client secret", signing_secret: "Your app's signing secret",
+    password: "App password for this mailbox", sasl_username: "archivebox", sasl_password: "Registered IRC account password",
+    server_password: "Only if required by your IRC server", phone_number: "+16505550123",
+    page_access_token: "Meta Page access token", app_secret: "Meta app secret", verify_token: "Your webhook verification secret",
+    homeserver: "https://matrix.example.com", user_id: "@archivebox:example.com", device_id: "Matrix device ID",
+    recovery_key: "Matrix recovery key", ssh_host: "macbook.your-tailnet.ts.net", ssh_user: "macusername",
+    ssh_identity_file: "/data/ssh/id_ed25519", ssh_known_hosts_file: "/data/ssh/known_hosts",
+    db_path: "~/Library/Messages/chat.db", own_handles: "+16505550123, archivebox@example.com",
+    account_id: "Choose an account above", chat_ids: "Comma-separated conversation IDs",
+    new_channel_name: "new-urls", saved_channel_name: "saved-urls",
+    new_channel: "Provider channel or conversation ID", saved_channel: "Provider channel or conversation ID",
+  };
+  return examples[key] || "";
+}
 function field(parent, spec, obj) {
   const [key, title, type = "text", choices] = spec,
     l = el("label", title),
     input = el(type === "select" ? "select" : "input");
   input.name = key;
+  input.setAttribute("aria-label", title);
   if (type === "select") {
     for (const choice of choices) {
       const o = el(
@@ -238,6 +271,10 @@ function field(parent, spec, obj) {
       input.append(o);
     }
   } else input.type = type === "list" ? "text" : type;
+  const defaultValue = fieldDefault(key);
+  if (obj[key] === undefined && defaultValue !== undefined) obj[key] = defaultValue;
+  if (!["checkbox", "select"].includes(type)) input.placeholder = fieldExample(key);
+  if (defaultValue !== undefined) input.title = `Default: ${defaultValue}`;
   if (type === "checkbox") input.checked = Boolean(obj[key]);
   else
     input.value =
@@ -262,10 +299,10 @@ function field(parent, spec, obj) {
       type === "checkbox"
         ? input.checked
         : type === "number"
-          ? Number(input.value)
+          ? (input.value === "" && defaultValue !== undefined ? defaultValue : Number(input.value))
           : type === "list"
             ? input.value.split(/[\s,]+/).filter(Boolean)
-            : input.value.trim();
+            : (input.value.trim() || (defaultValue !== undefined ? defaultValue : ""));
     if (key === "bot_token" && editing.platform === "telegram") {
       const token = input.value.match(/\b\d{6,}:[A-Za-z0-9_-]{25,}\b/);
       if (token) obj[key] = token[0];
@@ -298,6 +335,7 @@ function field(parent, spec, obj) {
       renderEditor();
   };
   l.append(input);
+  if (defaultValue !== undefined && type !== "checkbox") l.append(el("small", `Default: ${defaultValue}`, "field-hint"));
   parent.append(l);
   return input;
 }
@@ -332,12 +370,10 @@ function openTab(tab) {
     .forEach((x) => x.classList.toggle("active", x.dataset.tab === tab));
   $("#page-name").textContent = {
     connections: "Connections",
-    capture: "ArchiveBox Bot",
-    ai: "ArchiveBox AI Bot",
-    activity: "Activity",
+    settings: "Settings",
   }[tab];
   location.hash = tab;
-  if (tab === "activity" && current) action(() => refreshEvents());
+  if (tab === "settings" && current) action(() => refreshEvents());
 }
 function updateLocalUrlWarning() {
   const form = $("#archive-form");
@@ -354,87 +390,114 @@ function updateLocalUrlWarning() {
     ? "Links posted by the bots will not open from other devices. Local testing still works."
     : "This server address only works locally. Links posted by the bots use your separate Public URL.";
 }
+function providerLogo(platform) {
+  const img = el("img", undefined, "provider-logo");
+  img.src = `/static/logos/${platform}.${["slack", "beeper", "imessage", "messenger"].includes(platform) ? "png" : "svg"}`;
+  img.alt = `${providers[platform].name} logo`;
+  img.width = 32; img.height = 32;
+  return img;
+}
+function actionIcon(kind) {
+  const paths = {
+    gear: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1Z",
+    trash: "M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7",
+    download: "M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5",
+    test: "M5 3l16 9-16 9V3Z M5 12h16",
+  };
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  path.setAttribute("d", paths[kind]); path.setAttribute("fill", "none"); path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.6"); path.setAttribute("stroke-linejoin", "round"); path.setAttribute("stroke-linecap", "round");
+  svg.append(path); return svg;
+}
+function iconButton(icon, label, fn) {
+  const b = button("", fn, "secondary icon-button"); b.append(actionIcon(icon));
+  b.title = label; b.setAttribute("aria-label", label);
+  return b;
+}
+async function removeConnection(c) {
+  if (!confirm(`Remove ${name(c)} and disconnect its bots? Saved archives and logs are retained.`)) return;
+  // Read the current list so another administrator's recent additions survive.
+  const fresh = await api("/api/state");
+  await api("/api/settings", {method: "PUT", body: JSON.stringify({connections: fresh.settings.connections.filter(x => x.id !== c.id)})});
+  if ($("#editor").open) $("#editor").close();
+  await refresh();
+}
+function agentConsoleLink() {
+  const base = current.settings.archivebox_admin_url || current.settings.archivebox_url;
+  return link("OpenCode sessions ↗", base.replace(/\/$/, "") + "/admin/agent/");
+}
 function renderConnections() {
-  for (const target of ["connected", "capture-connections", "ai-connections"])
-    $("#" + target).replaceChildren();
+  const grid = $("#connected");
+  // Keep focused dropdowns and a reader's log scroll position stable on refresh.
+  if (grid.contains(document.activeElement)) return;
+  const scrolls = new Map([...grid.querySelectorAll(".connection-card")].map(card => [card.dataset.connection, card.querySelector(".connection-log").scrollTop]));
+  grid.replaceChildren();
   for (const c of current.settings.connections) {
-    const p = providers[c.platform];
-    const row = el("div", undefined, "connection-row");
-    const info = el("div");
-    info.append(
-      el("h3", `${p.icon} ${name(c)}`),
-      el(
-        "p",
-        `${statusText(status(c, c.capture.enabled ? "capture" : "ai"))} · ${c.platform === "email" ? "Inbound email" : c.ai.enabled ? "AI enabled" : "AI optional"}`,
-      ),
-    );
-    row.append(
-      info,
-      button("Configure", () => edit(c.id, "capture")),
-    );
-    $("#connected").append(row);
-    for (const r of ["capture", "ai"]) {
-      if (c.platform === "email" && r === "ai") continue;
-      const panel = el("article", undefined, "panel");
-      const heading = el("div", undefined, "panel-heading");
-      heading.append(
-        el("h2", `${p.icon} ${name(c)}`),
-        el("span", statusText(status(c, r)), "muted"),
-        button(
-          r === "ai" && !c.ai.enabled ? "Connect AI bot" : "Configure",
-          () => edit(c.id, r),
-        ),
-      );
-      panel.append(heading);
-      if (c.platform === "email") {
-        panel.append(el("p", `Email or CC ${c.capture.options.username || "your bot address"} → URLs saved in ArchiveBox. Check Activity for captures.`, "muted"));
-      } else if (r === "capture") {
-        const groups = (current.groups[c.id] || []).filter((g) => !g.is_dm);
-        if (groups.length) {
-          for (const g of groups) {
-            const label = el("label", undefined, "toggle-row"),
-              i = el("input");
-            i.type = "checkbox";
-            i.checked =
-              g.auto_archive === null
-                ? c.auto_archive_groups
-                : Boolean(g.auto_archive);
-            i.onchange = () =>
-              action(async () => {
-                await api(`/api/connections/${c.id}/groups`, {
-                  method: "PUT",
-                  body: JSON.stringify({
-                    channel: g.channel,
-                    auto_archive: i.checked,
-                  }),
-                });
-                await refresh();
-              });
-            label.append(
-              el("span", g.name),
-              el("small", "Archive all links"),
-              i,
-            );
-            panel.append(label);
-          }
-        } else
-          panel.append(
-            el(
-              "p",
-              "Add the bot to a group and send a message to see it here.",
-              "muted",
-            ),
-          );
-      } else
-        panel.append(
-          el(
-            "p",
-            `${c.ai_allowed_users.length} trusted people · sessions in ArchiveBox → Agent`,
-            "muted",
-          ),
-        );
-      $("#" + r + "-connections").append(panel);
+    const activity = current.connection_activity[c.id], card = el("article", undefined, "panel connection-card");
+    card.dataset.connection = c.id;
+    const heading = el("div", undefined, "connection-heading"), titles = el("div");
+    titles.append(el("h2", name(c)), el("small", providers[c.platform].name, "muted"));
+    heading.append(providerLogo(c.platform), titles);
+    const actions = el("div", undefined, "card-actions");
+    actions.append(iconButton("gear", `Edit ${name(c)}`, () => edit(c.id, c.capture.enabled ? "capture" : "ai")));
+    const download = el("a", undefined, "button secondary icon-button"); download.append(actionIcon("download"));
+    download.href = `/api/connections/${encodeURIComponent(c.id)}/export.csv`;
+    download.download = `${name(c)}-logs.csv`; download.title = "Download retained logs and parsed URLs (CSV)";
+    download.setAttribute("aria-label", `Download ${name(c)} logs`);
+    actions.append(download, iconButton("trash", `Remove ${name(c)}`, () => removeConnection(c)));
+    heading.append(actions); card.append(heading);
+    for (const r of c.platform === "email" ? ["capture"] : ["capture", "ai"]) {
+      const state = status(c, r), row = el("div", undefined, "bot-status");
+      const label = r === "capture" ? "ArchiveBox Bot" : "ArchiveBox AI Bot";
+      const botName = state.username || c[r].options.username || c[r].options.nickname || c[r].options.email || c[r].options.mention;
+      row.append(button(label, () => edit(c.id, r), "text-button"), el("span", statusText(state), `status-label ${state.ok ? "online" : state.error ? "offline" : ""}`));
+      card.append(row);
+      if (botName) card.append(el("div", botName, "bot-handle"));
+      if (r === "ai") { const sessions = agentConsoleLink(); sessions.className = "agent-console-link"; card.append(sessions); }
     }
+    const metrics = el("div", undefined, "connection-metrics"), saved = el("div"), recent = el("div");
+    saved.append(el("strong", activity.urls_saved.toLocaleString()), el("small", "URLs saved"));
+    recent.append(el("strong", activity.last_message_at ? new Date(activity.last_message_at).toLocaleString() : "No messages yet"), el("small", "Last received"));
+    metrics.append(saved, recent); card.append(metrics);
+    const channels = el("dl", undefined, "connection-channels");
+    for (const [title, key, enabled] of [["New URLs", "new_channel", c.enable_new_urls], ["Saved URLs", "saved_channel", c.enable_saved_urls]]) {
+      if (!c[key]) continue;
+      const group = (current.groups[c.id] || []).find(g => g.channel === c[key]);
+      channels.append(el("dt", title), el("dd", (group?.name || c[key]) + (enabled ? "" : " · disabled")));
+    }
+    if (channels.childElementCount) card.append(channels);
+    const test = el("div", undefined, "connection-test"), users = el("select");
+    users.setAttribute("aria-label", `Test recipient for ${name(c)}`);
+    users.append(new Option(c.platform === "email" ? "Inbound email · replies unavailable" : activity.people.length ? "Choose a test recipient" : "No known users · send the bot a DM first", ""));
+    for (const person of activity.people) for (const r of ["capture", "ai"]) {
+      if (!status(c, r).ok || c.platform === "email") continue;
+      users.append(new Option(`${person.name || person.id} · ${r === "ai" ? "AI bot" : "capture bot"}`, JSON.stringify({role: r, user: person.id})));
+    }
+    users.value = cardSelections.get(c.id) || "";
+    const send = iconButton("test", `Send test and help from ${name(c)}`, async () => {
+      send.disabled = true;
+      try {
+        await api(`/api/connections/${encodeURIComponent(c.id)}/test`, {method: "POST", body: users.value});
+        toast("Test message and /help sent.");
+      } finally { send.disabled = !users.value; }
+      await refresh();
+    });
+    send.disabled = !users.value;
+    users.disabled = users.options.length < 2;
+    users.onchange = () => {cardSelections.set(c.id, users.value); send.disabled = !users.value;};
+    test.append(users, send); card.append(test);
+    const log = el("div", undefined, "connection-log");
+    log.setAttribute("aria-label", `${name(c)} activity log`); log.tabIndex = 0;
+    for (const event of activity.events) {
+      const line = el("div", undefined, `log-entry event-${event.level}`), time = el("time", new Date(event.created_at).toLocaleString());
+      time.dateTime = event.created_at;
+      line.append(time, el("span", `${event.role ? event.role + " · " : ""}${event.message}${event.status_code ? ` · HTTP ${event.status_code}` : ""}${event.elapsed_ms != null ? ` · ${Math.round(event.elapsed_ms)} ms` : ""}`));
+      log.append(line);
+    }
+    if (!activity.events.length) log.append(el("p", "No connection events yet.", "muted"));
+    card.append(el("h3", "Activity", "log-heading"), log);
+    grid.append(card); log.scrollTop = scrolls.get(c.id) || 0;
   }
 }
 async function edit(id, r = "capture", platform) {
@@ -589,6 +652,14 @@ function renderEditor() {
   $("#editor-title").textContent =
     role === "ai" ? "ArchiveBox AI Bot" : "ArchiveBox Bot";
   $("#editor-status").textContent = statusText(status(editing, role));
+  if (editing.platform !== "email") {
+    const roles = el("div", undefined, "editor-roles");
+    for (const r of ["capture", "ai"]) roles.append(button(r === "capture" ? "ArchiveBox Bot" : "ArchiveBox AI Bot", () => {
+      role = r; discordSetup = null; renderEditor();
+    }, r === role ? "selected" : "secondary"));
+    box.append(roles);
+    if (role === "ai") box.append(agentConsoleLink());
+  }
   $("#remove-connection").hidden = !current.settings.connections.some(
     (c) => c.id === editing.id,
   );
@@ -752,6 +823,23 @@ function renderEditor() {
         }),
       );
   }
+  if (role === "capture") {
+    const groups = (current.groups[editing.id] || []).filter(group => !group.is_dm);
+    if (groups.length) {
+      const groupSettings = section(box, "Group archiving");
+      for (const group of groups) {
+        const label = el("label", group.name), toggle = el("input");
+        toggle.type = "checkbox";
+        toggle.checked = group.auto_archive === null ? editing.auto_archive_groups : Boolean(group.auto_archive);
+        toggle.onchange = () => action(async () => {
+          await api(`/api/connections/${editing.id}/groups`, {method: "PUT", body: JSON.stringify({channel: group.channel, auto_archive: toggle.checked})});
+          group.auto_archive = toggle.checked ? 1 : 0;
+          toast("Group archiving preference saved.");
+        });
+        label.append(toggle); groupSettings.append(label);
+      }
+    }
+  }
   const people = section(box, role === "ai" ? "Trusted people" : "Permissions");
   people.parentElement.open = role === "ai";
   const key = role === "ai" ? "ai_allowed_users" : "admin_users";
@@ -912,8 +1000,8 @@ function renderEvents() {
   $("#event-count").textContent = `${filtered.length} / ${eventRows.length} loaded · latest first`;
 }
 async function refreshEvents(older = false) {
-  const before = older && eventRows.length ? `?before=${eventRows.at(-1).id}` : "";
-  const {events} = await api("/api/events" + before);
+  const before = older && eventRows.length ? `&before=${eventRows.at(-1).id}` : "";
+  const {events} = await api("/api/events?connection=" + before);
   if (!older && events.length === 200 && eventRows.length && events.at(-1).id > eventRows[0].id) eventRows = [];
   eventRows = [...new Map([...eventRows, ...events].map(event => [event.id, event])).values()].sort((a,b) => b.id - a.id);
   renderEvents();
@@ -961,14 +1049,13 @@ async function refresh() {
   renderJobs(state.jobs);
   updateLocalUrlWarning();
   if ($("#editor").open && !dirty && previousStatus !== JSON.stringify(status(editing, role))) renderEditor();
-  if (!$("#page-activity").hidden) await refreshEvents();
+  if (!$("#page-settings").hidden) await refreshEvents();
 }
 for (const [id, p] of Object.entries(providers)) {
   const b = button("", () => edit(null, "capture", id), "provider-card");
   b.append(
-    el("span", p.icon, "provider-icon"),
+    providerLogo(id),
     el("strong", p.name),
-    el("small", p.blurb),
     el("span", "+", "provider-add"),
   );
   $("#providers").append(b);
@@ -1045,21 +1132,7 @@ $("#connection-form").onsubmit = (e) => {
   });
 };
 $("#close-editor").onclick = () => $("#editor").close();
-$("#remove-connection").onclick = () =>
-  action(async () => {
-    if (confirm("Disconnect both bots on this connection?")) {
-      await api("/api/settings", {
-        method: "PUT",
-        body: JSON.stringify({
-          connections: current.settings.connections.filter(
-            (c) => c.id !== editing.id,
-          ),
-        }),
-      });
-      $("#editor").close();
-      await refresh();
-    }
-  });
+$("#remove-connection").onclick = () => action(() => removeConnection(editing));
 $("#logout").onclick = () =>
   action(async () => {
     await api("/auth/logout", { method: "POST" });
@@ -1073,7 +1146,7 @@ document
   .querySelectorAll("[data-tab]")
   .forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
 openTab(
-  ["capture", "ai", "activity"].includes(location.hash.slice(1))
+  ["settings"].includes(location.hash.slice(1))
     ? location.hash.slice(1)
     : "connections",
 );

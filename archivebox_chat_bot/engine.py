@@ -16,6 +16,7 @@ from .store import now
 from .text import extract_urls, slack_escape, submission_tags, submitter_tag
 
 log = logging.getLogger(__name__)
+HELP_TEXT = "📚 /archivebox save <URLs> · search <words> · status · auto on/off · help"
 
 
 def safe_error(error):
@@ -371,6 +372,12 @@ class Engine:
                 self.store.update(job["id"], "agent_waiting", result)
                 return
             urls = extract_urls(text)
+            self.store.event(
+                "parse",
+                f"Parsed {len(urls)} HTTP(S) URL(s) · channel {message.channel}",
+                connection=self.connection.id,
+                role=message.role,
+            )
             if not urls:
                 self.store.update(job["id"], "ignored", error="No HTTP(S) URLs found")
                 await self.reaction(bot, message, "x")
@@ -384,6 +391,9 @@ class Engine:
             result["urls"] = urls
             result["tags"] = tags
             self.store.update(job["id"], "waiting", result)
+            self.store.event(
+                "capture", f"Queued {len(urls)} URL(s) in ArchiveBox", connection=self.connection.id, role=message.role
+            )
             if message.command:
                 await bot.post_text(
                     message, f"Queued {len(urls)} URL(s). Completed captures appear in the Saved URLs channel."
@@ -414,8 +424,7 @@ class Engine:
 
     async def command(self, bot, message):
         if message.command == "help":
-            prefix = "/archivebox"
-            text = f"📚 {prefix} save <URLs> · search <words> · status · auto on/off · help"
+            text = HELP_TEXT
         elif message.command == "status":
             status = await self.archive.check()
             text = f"✅ ArchiveBox connected · {status['snapshots']} snapshots · persona {self.settings.persona}"
@@ -587,7 +596,10 @@ class Engine:
             )
             for snapshot in page["items"]:
                 self.store.enqueue(
-                    f"saved:{self.scope()}:{snapshot['id']}", "announcement", snapshot, scope=self.scope()
+                    f"saved:{self.scope()}:{snapshot['id']}",
+                    "announcement",
+                    {**snapshot, "connection": self.connection.id},
+                    scope=self.scope(),
                 )
             offset += len(page["items"])
             if not page["items"] or offset >= page["total_items"]:

@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .config import Settings, is_secret, public_settings
+from .text import extract_urls
 
 
 def now():
@@ -54,6 +55,10 @@ class Store:
         """)
         if "scope" not in {row[1] for row in self.db.execute("PRAGMA table_info(jobs)")}:
             self.db.execute("ALTER TABLE jobs ADD COLUMN scope TEXT NOT NULL DEFAULT ''")
+        if "received_at" not in {row[1] for row in self.db.execute("PRAGMA table_info(history)")}:
+            self.db.execute("ALTER TABLE history ADD COLUMN received_at TEXT NOT NULL DEFAULT ''")
+        self.db.execute("CREATE INDEX IF NOT EXISTS events_connection ON events(connection,id)")
+        self.db.execute("CREATE INDEX IF NOT EXISTS jobs_connection ON jobs(json_extract(payload,'$.connection'))")
         self.db.execute(
             "UPDATE jobs SET state='uncertain', error='Service restarted during a remote operation; inspect before retrying.' "
             "WHERE state='running'"
@@ -71,7 +76,7 @@ class Store:
     def public_settings(self):
         return public_settings(self.settings().model_dump())
 
-    def redact(self, message):
+    def redact(self, message, *, settings=None):
         def secrets(value):
             if isinstance(value, dict):
                 for key, item in value.items():
@@ -84,7 +89,7 @@ class Store:
                     yield from secrets(item)
 
         text = str(message)
-        values = set(secrets(self.settings().model_dump()))
+        values = set(secrets(settings if settings is not None else self.settings().model_dump()))
         if os.environ.get("ADMIN_PASSWORD"):
             values.add(os.environ["ADMIN_PASSWORD"])
         for value in sorted(values, key=len, reverse=True):
@@ -105,14 +110,88 @@ class Store:
             )
             self.db.execute("DELETE FROM events WHERE id <= (SELECT MAX(id)-10000 FROM events)")
 
-    def events(self, limit=200, before=None):
+    def events(self, limit=200, before=None, connection=None):
         return [
             dict(row)
             for row in self.db.execute(
-                "SELECT * FROM events WHERE (? IS NULL OR id < ?) ORDER BY id DESC LIMIT ?",
-                (before, before, min(max(limit, 1), 500)),
+                "SELECT * FROM events WHERE (? IS NULL OR id < ?) AND (? IS NULL OR connection=?) ORDER BY id DESC LIMIT ?",
+                (before, before, connection, connection, min(max(limit, 1), 500)),
             ).fetchall()
         ]
+
+    def connection_activity(self, connection):
+        stats = dict(
+            self.db.execute(
+                "SELECT COALESCE(SUM(CASE WHEN state='done' THEN json_array_length(result,'$.urls') ELSE 0 END),0) AS urls_saved, "
+                "MAX(created_at) AS last_message_at FROM jobs WHERE kind='message' AND json_extract(payload,'$.connection')=?",
+                (connection,),
+            ).fetchone()
+        )
+        received = self.db.execute(
+            "SELECT MAX(received_at) FROM history WHERE connection=? AND is_bot=0", (connection,)
+        ).fetchone()[0]
+        stats["last_message_at"] = max(filter(None, [received, stats["last_message_at"]]), default=None)
+        return {**stats, "events": self.events(limit=50, connection=connection), "people": self.people(connection)}
+
+    def people(self, connection):
+        return [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT user_id AS id, MAX(user_name) AS name FROM history WHERE connection=? AND is_bot=0 GROUP BY user_id ORDER BY name",
+                (connection,),
+            ).fetchall()
+        ]
+
+    def export_connection(self, connection):
+        # Materialize SQLite results before returning a response; no cursor or
+        # transaction stays open while the browser downloads the CSV.
+        rows = [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT created_at,role,level,kind,message,status_code,elapsed_ms FROM events WHERE connection=? ORDER BY id",
+                (connection,),
+            ).fetchall()
+        ]
+        job_messages = set()
+        for row in self.db.execute(
+            "SELECT created_at,state,error,payload,result FROM jobs WHERE json_extract(payload,'$.connection')=? ORDER BY created_at",
+            (connection,),
+        ).fetchall():
+            payload, result = json.loads(row["payload"]), json.loads(row["result"])
+            job_messages.add((payload.get("role"), payload.get("channel"), payload.get("ts")))
+            for url in result.get("urls") or extract_urls(payload.get("text", "")):
+                rows.append(
+                    {
+                        "created_at": row["created_at"],
+                        "role": payload.get("role", ""),
+                        "kind": "url",
+                        "state": row["state"],
+                        "message": row["error"],
+                        "url": url,
+                        "user": payload.get("user", ""),
+                        "channel": payload.get("channel", ""),
+                        "crawl_id": result.get("crawl_id", ""),
+                    }
+                )
+        for row in self.db.execute(
+            "SELECT received_at,role,channel,message_id,user_id,text FROM history WHERE connection=? AND is_bot=0 ORDER BY seq",
+            (connection,),
+        ).fetchall():
+            if (row["role"], row["channel"], row["message_id"]) in job_messages:
+                continue
+            for url in extract_urls(row["text"]):
+                rows.append(
+                    {
+                        "created_at": row["received_at"],
+                        "role": row["role"],
+                        "kind": "url",
+                        "state": "observed",
+                        "url": url,
+                        "user": row["user_id"],
+                        "channel": row["channel"],
+                    }
+                )
+        return rows
 
     def bind_identity(self, connection: str, role: str, fingerprint: str):
         """Bind verified source identity before reading policy/history or remembering.
@@ -159,7 +238,7 @@ class Store:
     def remember(self, connection, message):
         with self.db:
             self.db.execute(
-                "INSERT OR IGNORE INTO history(connection,role,channel,message_id,thread,user_id,user_name,text,is_bot) VALUES(?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO history(connection,role,channel,message_id,thread,user_id,user_name,text,is_bot,received_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
                 (
                     connection,
                     message.role,
@@ -170,6 +249,7 @@ class Store:
                     message.user_name,
                     message.text,
                     int(message.is_bot),
+                    now(),
                 ),
             )
             self.db.execute(
@@ -179,8 +259,13 @@ class Store:
             )
             self.db.execute(
                 "INSERT OR IGNORE INTO groups(connection,channel,name,is_dm) VALUES(?,?,?,?)",
-                (connection, message.channel, message.channel, int(message.is_dm)),
+                (connection, message.channel, message.channel_name or message.channel, int(message.is_dm)),
             )
+            if message.channel_name:
+                self.db.execute(
+                    "UPDATE groups SET name=? WHERE connection=? AND channel=?",
+                    (message.channel_name, connection, message.channel),
+                )
 
     def recent(self, connection, message):
         rows = self.db.execute(
@@ -252,6 +337,7 @@ class Store:
         return bool(cursor.rowcount)
 
     def update(self, key, state, result=None, error=""):
+        previous = self.get(key)
         with self.db:
             if result is None:
                 self.db.execute("UPDATE jobs SET state=?,error=?,updated_at=? WHERE id=?", (state, error, now(), key))
@@ -260,6 +346,14 @@ class Store:
                     "UPDATE jobs SET state=?,result=?,error=?,updated_at=? WHERE id=?",
                     (state, json.dumps(result), error, now(), key),
                 )
+        if previous and previous["state"] != state and (connection := previous["payload"].get("connection")):
+            self.event(
+                "job",
+                f"{previous['kind']}: {state}" + (f" · {error}" if error else ""),
+                connection=connection,
+                role=previous["payload"].get("role", "capture"),
+                level="error" if state in ("failed", "uncertain") else "info",
+            )
 
     def jobs(self, state=None, limit=100, scope=None):
         clauses, values = [], []

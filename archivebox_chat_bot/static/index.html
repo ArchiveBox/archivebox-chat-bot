@@ -38,16 +38,9 @@
         <div class="brand">
           <img src="https://archivebox.io/icon.png" width="40" height="40" alt="ArchiveBox logo" /> <span>ArchiveBox<small>Chatbot Admin Console</small></span>
         </div>
-        <nav>
-          <button class="nav active" data-tab="connections">
-            ◈ <span>Connections</span></button
-          ><button class="nav" data-tab="capture">
-            ↗ <span>ArchiveBox Bot</span></button
-          ><button class="nav" data-tab="ai">
-            ✧ <span>ArchiveBox AI Bot</span></button
-          ><button class="nav" data-tab="activity">
-            ◷ <span>Activity</span>
-          </button>
+        <nav aria-label="Main navigation">
+          <button class="nav" data-tab="settings">⚙ <span>Settings</span></button>
+          <button class="nav active" data-tab="connections">◈ <span>Connections</span></button>
         </nav>
         <div class="aside-bottom">
           <a id="open-archive" target="_blank" rel="noreferrer"
@@ -64,11 +57,12 @@
         </header>
         <div class="content">
           <section id="page-connections" class="page">
-            <div class="page-heading">
-              <div>
-                <h1>Connect your messaging platforms</h1>
-              </div>
-            </div>
+            <div class="page-heading"><h1>Connect your messaging platforms</h1></div>
+            <div id="providers" class="provider-grid" aria-label="Add a connection"></div>
+            <div id="connected" class="connection-grid"></div>
+          </section>
+          <section id="page-settings" class="page" hidden>
+            <div class="page-heading"><h1>Settings</h1><button id="refresh" class="secondary">Refresh</button></div>
             <form id="archive-form" class="panel">
               <div class="panel-heading">
                 <img class="small-icon" src="https://archivebox.io/icon.png" alt="" />
@@ -76,7 +70,7 @@
                   <h2>ArchiveBox server</h2>
                   <p id="archive-status">Bring your server URL and API key.</p>
                 </div>
-                <button id="check-archive">Connect ArchiveBox →</button>
+                <button id="check-archive">Save & check server</button>
               </div>
               <div class="form-grid">
                 <label
@@ -105,68 +99,25 @@
                   <label
                     >Public URL<input
                       name="archivebox_public_url"
-                      type="url" /></label
+                      type="url" placeholder="https://web.archivebox.io" /></label
                   ><label
                     >Internal admin URL<input
                       name="archivebox_admin_url"
-                      type="url" /></label
-                  ><label>Persona<input name="persona" /></label
+                      type="url" placeholder="Uses Server URL when blank" /></label
+                  ><label>Default persona<input name="persona" placeholder="Default" /></label
                   ><label
                     >Capture plugins<input
                       name="plugins"
-                      placeholder="Your ArchiveBox defaults" /></label
+                      placeholder="All enabled server plugins (default)" /></label
                   ><label
                     >Public Chatbot Admin Console URL<input
                       name="public_url"
                       type="url"
-                      placeholder="For HTTPS webhooks and OAuth"
+                      placeholder="https://chatbot.example.com"
                   /></label>
                 </div>
               </details>
             </form>
-            <div class="section-title">
-              <h2>Add connection</h2>
-              <span>Multiple accounts and servers per provider supported.</span>
-            </div>
-            <div id="providers" class="provider-grid"></div>
-            <div id="connected" class="connection-list"></div>
-          </section>
-          <section id="page-capture" class="page" hidden>
-            <div class="page-heading">
-              <div>
-                <h1>ArchiveBox Bot</h1>
-                <p>
-                  Share links, save a conversation, browse completed snapshots.
-                </p>
-              </div>
-            </div>
-            <div class="feature-grid">
-              <article class="panel">
-                <h2>↗ Mention in a group</h2>
-                <p>Save URLs from the latest 10 messages.</p>
-              </article>
-              <article class="panel">
-                <h2>✉ Send a DM</h2>
-                <p>Send the links you want to keep.</p>
-              </article>
-              <article class="panel">
-                <h2>▧ Saved URLs</h2>
-                <p>Open captures with previews, sizes, and personas.</p>
-              </article>
-            </div>
-            <div id="capture-connections"></div>
-          </section>
-          <section id="page-ai" class="page" hidden>
-            <div class="page-heading">
-              <div>
-                <h1>ArchiveBox AI Bot</h1>
-                <p>
-                  Capture, organize, and verify with your ArchiveBox
-                  agent.
-                </p>
-              </div>
-            </div>
-            <div id="ai-connections"></div>
             <form id="ai-form" class="panel">
               <details>
                 <summary>Agent preferences</summary>
@@ -178,27 +129,17 @@
                 ><button>Save instructions</button>
               </details>
             </form>
-          </section>
-          <section id="page-activity" class="page" hidden>
-            <div class="page-heading">
-              <div>
-                <h1>Activity</h1>
-                <p id="queue-summary"></p>
-              </div>
-              <button id="refresh" class="secondary">Refresh</button>
-            </div>
             <div id="runtime-error" class="inline-note" hidden></div>
             <section class="panel activity-panel">
-              <div class="section-title"><h2>Events</h2><span id="event-count"></span></div>
+              <div class="section-title"><h2>Server & internal events</h2><span id="event-count"></span></div>
               <div class="event-controls">
-                <input id="event-search" type="search" placeholder="Filter events, connections, errors…" aria-label="Filter events" />
+                <input id="event-search" type="search" placeholder="Filter server events…" aria-label="Filter events" />
                 <select id="event-level" aria-label="Event severity"><option value="">All levels</option><option value="error">Errors</option><option value="warning">Warnings</option><option value="info">Info</option></select>
               </div>
               <div class="event-scroll"><table class="event-table"><thead><tr><th>Time</th><th>Level</th><th>Source</th><th>Event</th><th>HTTP</th><th>Duration</th></tr></thead><tbody id="events"></tbody></table></div>
               <button id="older-events" type="button" class="secondary">Load older events</button>
             </section>
-            <h2 class="jobs-heading">Jobs</h2>
-            <div id="jobs" class="panel"></div>
+            <details class="panel"><summary>Jobs · <span id="queue-summary"></span></summary><div id="jobs"></div></details>
             <form id="password-form" class="panel">
               <details>
                 <summary>Chatbot Admin Console password</summary>

@@ -189,7 +189,7 @@ class TransportBot:
         self.capabilities = result.get("capabilities", {})
         if result.get("state", "connected") != "connected":
             self.identity = {}
-        self.username = result.get("username") or self.options.get("username", "")
+        self.username = result.get("username") or result.get("name") or self.options.get("username", "")
         return result
 
     async def receive(self, raw):

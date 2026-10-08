@@ -114,6 +114,17 @@ class Runtime:
                     status.update(ok=False, error=safe_error(task.exception()))
                 if "state" in status:
                     status["ok"] = status["state"] == "connected"
+                identity = getattr(bot, "identity", {})
+                options = engine.connection.account_options(role)
+                status["username"] = (
+                    getattr(bot, "username", "")
+                    or identity.get("user")
+                    or options.get("username")
+                    or options.get("nickname")
+                    or options.get("email")
+                    or identity.get("user_id")
+                    or ""
+                )
                 statuses[role] = status
             connections[key] = {"roles": statuses, "error": engine.error}
         return {**self.connections, "chat": connections}

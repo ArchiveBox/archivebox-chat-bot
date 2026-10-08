@@ -157,7 +157,7 @@ header a {
   color: var(--ink);
 }
 .content {
-  max-width: 1470px;
+  max-width: none;
   margin: auto;
   padding: 20px 24px 0;
 }
@@ -709,7 +709,7 @@ nav {
   font-size: 11px;
 }
 .content {
-  max-width: 1440px;
+  max-width: none;
 }
 dialog {
   padding: 0;
@@ -1012,3 +1012,75 @@ dialog:has(.setup-guide[open]) {
     max-height: 260px;
   }
 }
+/* Two views: global settings and independently operated connections. */
+.provider-grid {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 5px 2px 12px;
+  margin: 0 0 14px;
+}
+.provider-card {
+  flex: 1 0 94px;
+  min-height: 94px;
+  padding: 12px !important;
+  align-items: flex-start;
+  background: #eeeef0 !important;
+  border-color: #dedde0 !important;
+  transition: transform .15s, box-shadow .15s, background .15s;
+}
+.provider-card:hover, .provider-card:focus-visible {
+  background: #fff !important;
+  transform: translateY(-3px);
+  box-shadow: 0 5px 12px #9b28541a;
+  border-color: var(--brand) !important;
+}
+.provider-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.provider-card strong { font-size: 12px; margin-top: 5px; }
+.provider-add { top: 5px; right: 9px; color: #968891; }
+.connection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+.connection-card { min-width: 0; margin: 0; padding: 18px; }
+.connection-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.connection-heading h2 { font-size: 17px; overflow-wrap: anywhere; }
+.connection-heading > div:nth-child(2) { min-width: 0; }
+.card-actions { display: flex; margin-left: auto; gap: 5px; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 32px; padding: 5px !important; font-size: 18px; border-radius: 6px; }
+.icon-button svg { width: 17px; height: 17px; }
+.bot-status { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.bot-status .text-button { font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.status-label { color: var(--muted); font-size: 10px; text-align: right; overflow-wrap: anywhere; }
+.status-label.online { color: var(--brand); }
+.status-label.offline { color: #a33131; }
+.bot-handle { font: 11px/1.6 ui-monospace, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.connection-metrics { display: grid; grid-template-columns: .8fr 1.3fr; gap: 12px; margin: 16px 0 12px; padding: 12px 0; border-block: 1px solid var(--line); }
+.connection-metrics strong { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
+.connection-metrics div:first-child strong { font-size: 22px; line-height: 1.25; }
+.connection-metrics small { color: var(--muted); font-size: 10px; }
+.connection-channels { display: grid; grid-template-columns: 65px minmax(0, 1fr); gap: 4px 8px; font-size: 11px; margin: 0 0 14px; }
+.connection-channels dt { color: var(--muted); }
+.connection-channels dd { margin: 0; overflow-wrap: anywhere; }
+.connection-test { display: flex; gap: 7px; align-items: center; margin: 14px 0; }
+.connection-test select { min-width: 0; font-size: 11px; padding: 7px; }
+.log-heading { margin: 12px 0 6px; font-size: 11px; color: var(--muted); }
+.connection-log { height: 200px; overflow: auto; padding: 10px; background: #f8f5f7; border: 1px solid var(--line); border-radius: 6px; font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.log-entry { padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.log-entry:first-child { padding-top: 0; }
+.log-entry time { display: block; color: var(--muted); font-size: 9px; }
+.editor-roles { display: flex; gap: 8px; margin-bottom: 16px; }
+#page-settings { width: 100%; }
+@media (max-width: 1450px) { .connection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .connection-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .provider-card { transition: none; } }
+.provider-logo[src$="discord.svg"] { background: #5865f2; padding: 5px; border-radius: 7px; }
+
+.field-hint { font-size: 10px; font-weight: 400; color: var(--muted); }
+.event-table th { white-space: nowrap; }
+.event-table td:nth-child(2), .event-table td:nth-child(3) { white-space: nowrap; }
+.event-table td:nth-child(4) { width: 100%; min-width: 300px; }
+
+.agent-console-link { display: inline-block; color: var(--brand); font-size: 11px; margin-top: 4px; text-decoration: underline; }

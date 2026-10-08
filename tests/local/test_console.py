@@ -246,3 +246,62 @@ def test_email_is_inbound_only_and_keeps_password_private(console):
     connection["ai"] = {"enabled": True}
     rejected = console.put("/api/settings", json={"connections": [connection]})
     assert rejected.status_code == 422 and "inbound-only" in rejected.text
+
+
+def test_connection_dashboard_scopes_activity_and_exports_csv(console, tmp_path):
+    import csv
+    import io
+    import json
+    import sqlite3
+
+    login(console)
+    assert (
+        console.put(
+            "/api/settings",
+            json={
+                "connections": [
+                    {"id": "one", "platform": "telegram", "enabled": False},
+                    {"id": "two", "platform": "telegram", "enabled": False},
+                ]
+            },
+        ).status_code
+        == 200
+    )
+    with sqlite3.connect(tmp_path / "bridge.sqlite3") as db:
+        for key in ("one", "two"):
+            db.execute(
+                "INSERT INTO jobs(id,kind,payload,state,result,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                (
+                    key,
+                    "message",
+                    json.dumps(
+                        {
+                            "connection": key,
+                            "role": "capture",
+                            "user": "u",
+                            "channel": "dm",
+                            "text": "https://example.org/" + key,
+                        }
+                    ),
+                    "done",
+                    json.dumps({"urls": ["https://example.org/" + key]}),
+                    "2026-10-08T00:00:00+00:00",
+                    "2026-10-08T00:00:00+00:00",
+                ),
+            )
+            db.execute(
+                "INSERT INTO events(created_at,level,kind,connection,role,message) VALUES(?,?,?,?,?,?)",
+                ("2026-10-08T00:00:00+00:00", "info", "message", key, "capture", "=private-" + key),
+            )
+    state = console.get("/api/state").json()
+    first = state["connection_activity"]["one"]
+    assert first["urls_saved"] == 1 and first["last_message_at"] == "2026-10-08T00:00:00+00:00"
+    assert all(row["connection"] == "one" for row in first["events"])
+    response = console.get("/api/connections/one/export.csv")
+    assert response.status_code == 200 and "text/csv" in response.headers["content-type"]
+    rows = list(csv.DictReader(io.StringIO(response.text)))
+    assert any(row["url"] == "https://example.org/one" for row in rows)
+    assert any(row["message"] == "'=private-one" for row in rows)
+    assert "private-two" not in response.text and "https://example.org/two" not in response.text
+    assert console.get("/api/connections/absent/export.csv").status_code == 404
+    assert console.post("/api/connections/one/test", json={"role": "capture", "user": "stranger"}).status_code == 400
