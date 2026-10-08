@@ -123,7 +123,11 @@ async def test_real_opencode_session_is_persisted(archivebox):
         "GET", "session", params={"directory": session["directory"], "roots": "true", "limit": 100}
     )
     assert any(row["id"] == session["id"] and row["title"] == title for row in sessions)
-    prompt = "Say hello briefly. Do not use any tools."
+    prompt = (
+        "Inspect the existing ArchiveBox collection with its CLI. Find a saved HTTP caching reference, "
+        "read its persisted status and output size, and report the URL, status and byte count in one sentence. "
+        "Do not capture, tag, delete, or change anything."
+    )
     answer = await archivebox.prompt_session(session, prompt)
     assert answer.strip()
     messages = await archivebox._agent_request(
@@ -138,6 +142,35 @@ async def test_real_opencode_session_is_persisted(archivebox):
         == answer
         for row in messages
     )
+
+
+async def test_async_opencode_task_survives_client_reconnect(archivebox):
+    session = await archivebox.create_session("Chat async acceptance " + uuid4().hex)
+    prompt = (
+        "Use ArchiveBox's existing CLI to inspect a saved Python asyncio reference. "
+        "Report its original URL, sealed status, and total saved file size in one sentence. "
+        "Do not add URLs or modify this collection."
+    )
+    started = monotonic()
+    await archivebox.submit_session(session, prompt)
+    assert monotonic() - started < 15, "Prompt submission must not hold a synchronous generation request"
+    # Reconstruct the real HTTP client. Completion must come from the persisted
+    # session, without submitting the task for a second time.
+    resumed = ArchiveBox(archivebox.settings)
+    try:
+        deadline = monotonic() + 300
+        while (answer := await resumed.session_answer(session)) is None:
+            assert monotonic() < deadline, "Inspect the existing OpenCode session; do not replay the task"
+            await asyncio.sleep(1)
+        assert "docs.python.org" in answer and "sealed" in answer.casefold()
+        messages = await resumed._agent_request(
+            "GET", f"session/{session['id']}/message", params={"directory": session["directory"]}
+        )
+        submitted = [row for row in messages if row["info"]["role"] == "user"]
+        assert len(submitted) == 1
+        assert any(part.get("text") == prompt for part in submitted[0]["parts"])
+    finally:
+        await resumed.close()
 
 
 async def test_repeated_human_submissions_create_tagged_captures(archivebox):

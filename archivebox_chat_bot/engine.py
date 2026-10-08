@@ -80,6 +80,8 @@ class Engine:
                 "ssh_user",
                 "db_path",
                 "own_handles",
+                "base_url",
+                "account_id",
             )
         }
         fingerprint = hashlib.sha256(

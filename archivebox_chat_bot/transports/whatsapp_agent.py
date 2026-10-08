@@ -30,7 +30,14 @@ class WhatsAppAgentTransport:
             raise ValueError("WhatsApp agent API key is required")
         fingerprint = hashlib.sha256(token.encode()).hexdigest()[:24]
         # One upstream poller per key, even when multiple configured roles share it.
-        self.path = Path(data_dir) / f"whatsapp-agent-{fingerprint}.json"
+        self.path = Path(data_dir).parent / f"whatsapp-agent-{fingerprint}.json"
+        # The upstream cursor belongs to the key, not a UI connection or bot role.
+        # Preserve the furthest acknowledged cursor from previous per-role files.
+        if not self.path.exists():
+            previous = [json.loads(path.read_text()) for path in self.path.parent.glob(f"*/{self.path.name}")]
+            if previous:
+                self.state = max(previous, key=lambda value: value.get("offset", 0))
+                self._save()
         self.state = json.loads(self.path.read_text()) if self.path.exists() else {"offset": 0, "contacts": {}}
         self.client = httpx.AsyncClient(
             base_url=BASE_URL,

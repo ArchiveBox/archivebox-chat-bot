@@ -3,8 +3,19 @@ let csrf = "",
   current,
   editing,
   role = "capture",
-  dirty = false;
+  dirty = false,
+  beeperAccounts = [],
+  beeperChats = [],
+  beeperState = "";
 const providers = {
+  beeper: {
+    name: "Beeper",
+    icon: "◌",
+    blurb: "Many networks, one connection",
+    shared: [["base_url", "Beeper Desktop or Server URL", "url"]],
+    fields: [["access_token", "Beeper API access token", "password"]],
+    advanced: [["account_id", "Network account ID"], ["chat_ids", "Selected conversation IDs", "list"]],
+  },
   slack: {
     name: "Slack",
     icon: "#",
@@ -251,6 +262,21 @@ function openTab(tab) {
   }[tab];
   location.hash = tab;
 }
+function updateLocalUrlWarning() {
+  const form = $("#archive-form");
+  const local = (value) => {
+    try {
+      const host = new URL(value).hostname.toLowerCase().replace(/\.$/, "");
+      return host === "localhost" || host.endsWith(".localhost") || /^127\./.test(host) || host === "[::1]";
+    } catch { return false; }
+  };
+  const server = form.elements.archivebox_url.value;
+  const publicUrl = form.elements.archivebox_public_url.value || server;
+  $("#local-url-warning").hidden = !local(server) && !local(publicUrl);
+  $("#local-url-message").textContent = local(publicUrl)
+    ? "Links posted by the bots will not open from other devices. Local testing still works."
+    : "This server address only works locally. Links posted by the bots use your separate Public URL.";
+}
 function renderConnections() {
   for (const target of ["connected", "capture-connections", "ai-connections"])
     $("#" + target).replaceChildren();
@@ -333,6 +359,9 @@ function renderConnections() {
 }
 async function edit(id, r = "capture", platform) {
   role = r;
+  beeperAccounts = [];
+  beeperChats = [];
+  beeperState = "";
   editing = id
     ? structuredClone(current.settings.connections.find((c) => c.id === id))
     : {
@@ -340,7 +369,7 @@ async function edit(id, r = "capture", platform) {
         platform,
         name: providers[platform].name,
         enabled: true,
-        options: platform === "irc" ? { port: 6697, tls: true } : {},
+        options: platform === "irc" ? { port: 6697, tls: true } : platform === "beeper" ? { base_url: current.beeper_default_url } : {},
         capture: { enabled: true, options: {} },
         ai: { enabled: false, options: {} },
         new_channel: "",
@@ -360,22 +389,22 @@ async function edit(id, r = "capture", platform) {
         ai_allowed_users: [],
         commands: ["help", "save", "search", "status", "auto"],
       };
-  if (id) {
-    try {
-      const result = await api(
-        `/api/connections/${id}/conversations?role=${r}`,
-      );
-      current.groups[id] = result.channels;
-    } catch {
-      /* A disconnected account can still be edited. */
-    }
-  }
-  editing.people = id
-    ? (await api(`/api/connections/${id}/people`)).people
-    : [];
+  editing.people = [];
   dirty = false;
   renderEditor();
   $("#editor").showModal();
+  if (id) {
+    const results = await Promise.allSettled([
+      api(`/api/connections/${id}/conversations?role=${r}`),
+      api(`/api/connections/${id}/people`),
+    ]);
+    if (editing.id !== id || role !== r) return;
+    if (results[0].status === "fulfilled") current.groups[id] = results[0].value.channels;
+    else toast(results[0].reason.message, true);
+    if (results[1].status === "fulfilled") editing.people = results[1].value.people;
+    else toast(results[1].reason.message, true);
+    if (!dirty && $("#editor").open) renderEditor();
+  }
 }
 function renderEditor() {
   const p = providers[editing.platform],
@@ -447,6 +476,26 @@ function renderEditor() {
   const creds = el("div", undefined, "form-grid");
   box.append(creds);
   for (const f of p.fields) field(creds, f, account.options);
+  if (editing.platform === "beeper") {
+    guide.append(link("Open Beeper ↗", "https://www.beeper.com/download"));
+    box.append(button("Find my accounts", discoverBeeper));
+    if (beeperState && beeperState !== "ready")
+      box.append(el("p", beeperState === "needs-login" ? "Sign in to Beeper first, then find your accounts here." : "Finish device verification and syncing in Beeper, then try again.", "inline-note"));
+    const accountLabel = el("label", "Account for this bot"), select = el("select");
+    select.append(new Option("Choose a connected account", ""));
+    for (const a of beeperAccounts) select.append(new Option(`${a.name} · ${a.status}`, a.id));
+    if (account.options.account_id && !beeperAccounts.some(a => a.id === account.options.account_id))
+      select.append(new Option(account.options.account_id, account.options.account_id));
+    select.value = account.options.account_id || "";
+    select.onchange = () => action(async () => { account.options.account_id = select.value; account.options.chat_ids = []; dirty = true; await discoverBeeper(); });
+    accountLabel.append(select); box.append(accountLabel);
+    const chatLabel = el("label", "Conversations this bot can use"), chats = el("select");
+    chats.multiple = true;
+    for (const chat of beeperChats) { const option = new Option(chat.name, chat.id); option.selected = (account.options.chat_ids || []).includes(chat.id); chats.append(option); }
+    chats.onchange = () => { account.options.chat_ids = [...chats.selectedOptions].map(o => o.value); dirty = true; };
+    chatLabel.append(chats); box.append(chatLabel);
+    box.append(el("p", "Only selected conversations are connected. Choose a separate network account for each bot.", "muted"));
+  }
   if (["messenger", "whatsapp"].includes(editing.platform))
     for (const f of p[
       account.options.transport ||
@@ -574,6 +623,16 @@ function renderEditor() {
     field(advanced, ["allow_guests", "Allow guests", "checkbox"], editing);
   }
 }
+async function discoverBeeper() {
+  const id = editing.id, r = role;
+  const result = await api("/api/beeper/discover", {method: "POST", body: JSON.stringify({connection_id: id, role: r, options: {...editing.options, ...editing[r].options}})});
+  if (editing.id !== id || role !== r) return;
+  beeperAccounts = result.accounts;
+  beeperChats = result.channels;
+  beeperState = result.state;
+  if (result.channels.length) current.groups[id] = result.channels.map(c => ({...c, channel:c.id}));
+  renderEditor();
+}
 async function saveConnection(close = true) {
   const value = structuredClone(editing);
   delete value.people;
@@ -660,6 +719,7 @@ async function refresh() {
   $("#runtime-error").textContent = state.error;
   renderConnections();
   renderJobs(state.jobs);
+  updateLocalUrlWarning();
   if ($("#editor").open && !dirty) renderEditor();
 }
 for (const [id, p] of Object.entries(providers)) {
@@ -699,6 +759,12 @@ $("#archive-form").onsubmit = (e) => {
     await refresh();
     toast(`Connected · ${checked.snapshots} snapshots`);
   });
+};
+$("#archive-form").addEventListener("input", updateLocalUrlWarning);
+$("#edit-public-url").onclick = () => {
+  const input = $("#archive-form").elements.archivebox_public_url;
+  input.closest("details").open = true;
+  input.focus();
 };
 $("#ai-form").onsubmit = (e) => {
   e.preventDefault();

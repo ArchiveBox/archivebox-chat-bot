@@ -165,6 +165,9 @@ def create_app(directory=None):
             "groups": {c.id: store.groups(c.id) for c in store.settings().connections},
             "error": engine.error,
             "jobs": jobs,
+            "beeper_default_url": "http://host.docker.internal:23373"
+            if Path("/.dockerenv").exists()
+            else "http://127.0.0.1:23373",
         }
 
     @app.put("/api/settings")
@@ -216,6 +219,71 @@ def create_app(directory=None):
         settings = store.settings()
         settings.connections = [value if c.id == value.id else c for c in settings.connections]
         store.save_settings(settings)
+
+    @app.post("/api/beeper/discover")
+    async def discover_beeper(request: Request, session=admin_session):
+        data = await request.json()
+        role = data.get("role", "capture")
+        if role not in {"capture", "ai"}:
+            raise HTTPException(422, "Choose a bot role")
+        previous = next(
+            (c for c in store.settings().connections if c.id == data.get("connection_id") and c.platform == "beeper"),
+            None,
+        )
+        options = merge_settings(previous.account_options(role) if previous else {}, data.get("options", {}))
+        try:
+            base_url = Settings.http_url(options.get("base_url") or "http://127.0.0.1:23373")
+            headers = {"Authorization": "Bearer " + options["access_token"]} if options.get("access_token") else {}
+            async with httpx.AsyncClient(
+                base_url=base_url, headers=headers, timeout=15, follow_redirects=False
+            ) as client:
+                setup_response = await client.get("/v1/app/setup")
+                setup_response.raise_for_status()
+                setup = setup_response.json()
+                if setup["state"] != "ready":
+                    return {"state": setup["state"], "accounts": [], "channels": []}
+                response = await client.get("/v1/accounts")
+                response.raise_for_status()
+                accounts = [
+                    {
+                        "id": a["accountID"],
+                        "name": " · ".join(
+                            filter(
+                                None,
+                                [
+                                    a.get("network"),
+                                    a["user"].get("fullName") or a["user"].get("username") or a["user"]["id"],
+                                ],
+                            )
+                        ),
+                        "status": a["status"],
+                    }
+                    for a in response.json()
+                ]
+            channels = []
+            if options.get("account_id"):
+                from .transports.beeper import BeeperTransport
+
+                discovery = BeeperTransport(options, "discovery", store.directory / "beeper-discovery", None)
+                try:
+                    channels = await discovery.channels()
+                finally:
+                    await discovery.close()
+            return {"state": "ready", "accounts": accounts, "channels": channels}
+        except (ValueError, KeyError) as exc:
+            raise HTTPException(422, "Check the Beeper server URL and account selection") from exc
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            raise HTTPException(
+                400,
+                "Approve a Beeper API access token first" if status in {401, 403} else f"Beeper returned HTTP {status}",
+            ) from None
+        except httpx.TransportError:
+            raise HTTPException(
+                400, "Beeper is unreachable; start Beeper Desktop or Server and check its address"
+            ) from None
+        except RuntimeError as exc:
+            raise HTTPException(400, str(exc)) from None
 
     @app.post("/api/connections/{connection_id}/channels")
     async def channels(connection_id: str, session=admin_session):
@@ -326,6 +394,17 @@ def create_app(directory=None):
         if job["result"].get("phase") != "agent_result" and data.get("confirmed_answer_absent") is not True:
             raise HTTPException(400, "Check chat and confirm the answer was not already delivered")
         store.update(job["id"], "agent_waiting", {**job["result"], "phase": "agent_result"})
+        return {"ok": True}
+
+    @app.post("/api/jobs/stop")
+    async def stop_agent(request: Request, session=admin_session):
+        job = store.get((await request.json()).get("id", ""))
+        if not job or job["state"] not in {"running", "agent_waiting", "uncertain"} or not job["result"].get("session"):
+            raise HTTPException(400, "Choose an active agent task")
+        if job["scope"] not in engine.scopes:
+            raise HTTPException(409, "Reconnect the original server and bot first")
+        await engine.archive.abort_session(job["result"]["session"])
+        store.update(job["id"], "cancelled")
         return {"ok": True}
 
     @app.get("/api/manifest/{role}")

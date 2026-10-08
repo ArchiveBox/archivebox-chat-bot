@@ -85,6 +85,12 @@
                     placeholder="Paste your ArchiveBox API key"
                 /></label>
               </div>
+              <div id="local-url-warning" class="url-warning" role="status" hidden>
+                <strong>⚠ Local server address</strong>
+                <span id="local-url-message"></span>
+                <span>Use <a href="https://tailscale.com/kb/1153/enabling-https" target="_blank" rel="noreferrer">Tailscale for personal access</a> or a domain for internet access.</span>
+                <button id="edit-public-url" type="button" class="text-button">Set the URL shared in chat →</button>
+              </div>
               <details>
                 <summary>Advanced connection settings</summary>
                 <div class="form-grid">

@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-PLATFORMS = ("slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage")
+PLATFORMS = ("beeper", "slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage")
 
 
 def is_secret(key):
@@ -20,7 +20,7 @@ class Connection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = ""
-    platform: Literal["slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage"]
+    platform: Literal["beeper", "slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage"]
     enabled: bool = True
     options: dict = Field(default_factory=dict)
     capture: Account = Field(default_factory=lambda: Account(enabled=True))
@@ -111,6 +111,17 @@ class Settings(BaseModel):
                 if not getattr(connection, role).enabled:
                     continue
                 options = connection.account_options(role)
+                if connection.platform == "beeper":
+                    if options.get("account_id"):
+                        identity = (
+                            "beeper",
+                            options.get("base_url", "http://127.0.0.1:23373").rstrip("/"),
+                            options["account_id"],
+                        )
+                        if identity in keys:
+                            raise ValueError("Choose a separate Beeper network account for each bot")
+                        keys.add(identity)
+                    continue
                 token = (
                     options.get("bot_token")
                     or options.get("api_key")

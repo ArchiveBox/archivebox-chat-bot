@@ -59,7 +59,14 @@ class Runtime:
             for role, bot in engine.bots.items():
                 status = dict(engine.connections.get(role, {}))
                 status.update(self.adapters.worker.status.get(f"{key}:{role}", {}))
-                task = getattr(bot, "task", None) or getattr(getattr(bot, "transport", None), "consumer", None)
+                transport = getattr(bot, "transport", None)
+                task = (
+                    getattr(bot, "task", None)
+                    or getattr(transport, "consumer", None)
+                    or getattr(transport, "task", None)
+                )
+                if getattr(transport, "error", ""):
+                    status.update(ok=False, error=transport.error)
                 if task and task.done() and not task.cancelled() and task.exception():
                     status.update(ok=False, error=safe_error(task.exception()))
                 if "state" in status:

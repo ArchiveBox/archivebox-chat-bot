@@ -132,7 +132,11 @@ class TransportBot:
         if worker:
             worker.receivers[self.account] = self.receive
         else:
-            if connection.platform == "irc":
+            if connection.platform == "beeper":
+                from .transports.beeper import BeeperTransport
+
+                adapter = BeeperTransport
+            elif connection.platform == "irc":
                 from .transports.irc import IRCTransport
 
                 adapter = IRCTransport
@@ -166,7 +170,7 @@ class TransportBot:
         result = await self.call("check")
         self.identity = {
             "user_id": str(result.get("bot_user_id") or result.get("id") or ""),
-            "team_id": self.options.get("server") or self.options.get("homeserver", ""),
+            "team_id": self.options.get("server") or self.options.get("homeserver") or self.options.get("base_url", ""),
         }
         self.capabilities = result.get("capabilities", {})
         if result.get("state", "connected") != "connected":

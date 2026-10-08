@@ -1128,6 +1128,20 @@ dialog::backdrop {
   max-width: 100%;
   margin: 20px auto;
 }
+.url-warning {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #dfcf9b;
+  border-radius: 10px;
+  background: #fff9e8;
+  color: #665222;
+  font-size: 13px;
+}
+.url-warning[hidden] { display: none; }
+.url-warning a { color: inherit; text-decoration: underline; }
+.url-warning .text-button { justify-self: start; color: inherit; padding: 0; }
 input[type="checkbox"] {
   width: 19px;
   accent-color: #527b3a;
