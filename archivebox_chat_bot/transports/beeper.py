@@ -33,7 +33,9 @@ class BeeperTransport:
         self.chat_ids = frozenset(options.get("chat_ids") or [])
         # The setting exists only on the capture-role account. Keep an AI
         # account's own-message exclusion even if stale config contains it.
-        self.include_own_messages = bool(options.get("include_own_messages")) and account_id.rsplit(":", 1)[-1] == "capture"
+        self.include_own_messages = (
+            bool(options.get("include_own_messages")) and account_id.rsplit(":", 1)[-1] == "capture"
+        )
         headers = {"Authorization": "Bearer " + options["access_token"]} if options.get("access_token") else {}
         self.client = httpx.AsyncClient(base_url=self.base_url, headers=headers, timeout=30, follow_redirects=False)
         scope = hashlib.sha256(json.dumps([self.base_url, self.network_account]).encode()).hexdigest()[:24]
