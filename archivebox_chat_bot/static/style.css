@@ -825,19 +825,19 @@ button:disabled {
   }
 }
 /* Provider instructions stay beside the fields they explain. */
-.editor-layout.slack-setup {
+.editor-layout.guided-setup {
   display: block;
 }
-.slack-setup .guide-steps {
+.guided-setup .guide-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
 }
-.slack-setup .guide-step label,
-.slack-setup .guide-step .button {
+.guided-setup .guide-step label,
+.guided-setup .guide-step .button {
   margin-top: 16px;
 }
-.slack-setup .guide-step input {
+.guided-setup .guide-step input {
   min-width: 0;
 }
 dialog:has(.setup-guide[open]) {
@@ -933,7 +933,7 @@ dialog:has(.setup-guide[open]) {
   margin-top: 8px;
 }
 @media (max-width: 900px) {
-  .slack-setup .guide-steps {
+  .guided-setup .guide-steps {
     grid-template-columns: minmax(0, 1fr);
   }
   .editor-layout {

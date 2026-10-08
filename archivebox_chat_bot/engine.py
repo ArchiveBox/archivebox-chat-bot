@@ -106,7 +106,7 @@ class Engine:
                 bot = self.adapters.create(self.connection, role, self.settings)
                 self.bots[role] = bot
                 if (
-                    self.connection.platform == "slack"
+                    self.connection.platform in {"slack", "discord"}
                     and role == "capture"
                     and (
                         (self.connection.enable_new_urls and not self.connection.new_channel)
@@ -191,6 +191,8 @@ class Engine:
                 message.as_dict(),
                 scope=self.scope(message.role),
             )
+            return True
+        return False
 
     async def run(self):
         last_poll = 0
@@ -343,6 +345,8 @@ class Engine:
             if not urls:
                 self.store.update(job["id"], "ignored", error="No HTTP(S) URLs found")
                 await self.reaction(bot, message, "x")
+                if message.command:
+                    await bot.post_text(message, "No HTTP(S) URLs found. Include the links you want to save.")
                 return
             if len(urls) > self.settings.max_urls:
                 raise ValueError(f"Message contains {len(urls)} URLs; configured limit is {self.settings.max_urls}")
@@ -372,6 +376,9 @@ class Engine:
                 self.error = safe_error(exc)
             if message and bot:
                 await self.reaction(bot, message, "x")
+                if message.native_command:
+                    with contextlib.suppress(Exception):
+                        await bot.post_text(message, f"❌ {safe_error(exc)} · Check Activity before retrying.")
                 if message.role == "ai" and message.platform == "slack":
                     with contextlib.suppress(SlackApiError):
                         await bot.agent_status(message, "suspended")

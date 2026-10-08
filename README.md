@@ -8,7 +8,7 @@
 
 [ArchiveBox Bot](#archivebox-bot) · [ArchiveBox AI Bot](#archivebox-ai-bot) · [Setup](#connect-your-chat-apps)
 
-[Slack](#slack) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper)
+[Slack](#slack) · [Discord](#discord) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper)
 
 </div>
 
@@ -92,6 +92,21 @@ docker compose up -d --build
 Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/). App-level token: our installed app.
 
 </details>
+
+---
+
+<img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg" align="right" width="80" style="float: right; width: 80px;" alt="Discord logo">
+
+#### Discord
+
+- **Connect:** [create an app](https://discord.com/developers/applications) → **Bot → Reset Token** → paste token into the Chatbot Admin Console.
+- **Enable:** **Bot → Message Content Intent → Save Changes** → **Find my bot → Add to Discord** → select your server → **Save & connect**.
+- **Use:** DM links, mention the bot in channels/threads, or use `/archivebox save`, `search`, `auto`, `status`, `help`.
+- **Destinations:** **New URLs + Saved URLs** are created automatically; choose existing channels under bot preferences. No public webhook.
+
+<a href="archivebox_chat_bot/static/guides/discord-create-app.jpg"><img src="archivebox_chat_bot/static/guides/discord-create-app.jpg" width="480" alt="Creating ArchiveBox Bot in our signed-in Discord Developer Portal"></a>
+
+[Official setup](https://docs.discord.com/developers/quick-start/getting-started) · [Message Content Intent](https://support-dev.discord.com/hc/en-us/articles/6207308062871-What-are-Privileged-Intents)
 
 ---
 
@@ -311,7 +326,7 @@ uv run ruff check .
 ```
 
 - Python: shared capture/agent engine, queue, permissions, Chatbot Admin Console.
-- Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
+- Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, [discord.py](https://discordpy.readthedocs.io/), pydle, imsg.
 - Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers. Provider logos are official website assets; IRC uses the Libera.Chat network logo, and the bundled Messenger logo comes from [Messenger](https://www.messenger.com/).
 
 </details>
@@ -349,6 +364,16 @@ uv run ruff check .
 <td width="50%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="Real Slack AI conversation planning, capturing, tagging, and verifying HTTP caching references"></a></td>
 </tr>
 </table>
+
+---
+
+<img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg" align="right" width="80" style="float: right; width: 80px;" alt="Discord logo">
+
+#### Discord AI
+
+- **Connect:** create a second Discord app named **ArchiveBox AI Bot** → repeat the [Discord setup](#discord) → choose **Trusted people**.
+- **DM / mention:** research, capture, tag, and verify with your existing ArchiveBox agent; follow up in the same DM or thread.
+- **ArchiveBox → Agent:** open the session and its tool results.
 
 ---
 

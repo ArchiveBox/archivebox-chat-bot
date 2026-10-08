@@ -52,7 +52,7 @@ def test_provider_guides_load_real_images_and_change_with_transport():
         page.get_by_role("button", name="Open Chatbot Admin Console").click()
         expect(page.locator("#console")).to_be_visible()
         page.locator('.nav[data-tab="connections"]').click()
-        for provider in ("Slack", "Zulip", "Telegram", "WhatsApp", "IRC", "iMessage", "Messenger", "Beeper"):
+        for provider in ("Slack", "Discord", "Zulip", "Telegram", "WhatsApp", "IRC", "iMessage", "Messenger", "Beeper"):
             page.locator(".provider-card").filter(has=page.get_by_text(provider, exact=True)).click()
             guide = page.locator("#setup-guide")
             expect(guide).to_have_attribute("open", "")

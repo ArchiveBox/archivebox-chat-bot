@@ -1,5 +1,27 @@
 // Shared by both bot roles. Images are real provider UI; external examples retain attribution.
 const setupGuides = {
+  discord: [
+    {
+      title: "Create your Discord bot",
+      text: "New Application → name it {bot} → Create. Open Bot → Reset Token → Copy, then paste it here.",
+      action: "discord-create",
+      field: ["bot_token", "Discord bot token", "password"],
+      image: "discord-create-app.jpg",
+      caption: "Our Discord Developer Portal · creating ArchiveBox Bot",
+      docs: [["Create an app & token", "https://docs.discord.com/developers/quick-start/getting-started"]],
+    },
+    {
+      title: "Enable message access",
+      text: "Bot → Privileged Gateway Intents → Message Content Intent → Save Changes. This lets the bot find URLs in earlier messages and archive channel links.",
+      docs: [["Message Content Intent", "https://support-dev.discord.com/hc/en-us/articles/6207308062871-What-are-Privileged-Intents"]],
+    },
+    {
+      title: "Add to your server",
+      text: "Find my bot → Add to Discord → choose your server → Authorize. Refresh servers, select your server, then Save & connect. New URLs + Saved URLs are created automatically; no public webhook needed.",
+      action: "discord-connect",
+      docs: [["Install in a server", "https://docs.discord.com/developers/quick-start/getting-started#step-3-installing-your-app"]],
+    },
+  ],
   slack: [
     {
       title: "Create and install your Slack app",

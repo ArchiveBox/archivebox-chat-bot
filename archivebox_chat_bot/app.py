@@ -246,6 +246,27 @@ def create_app(directory=None):
         settings.connections = [value if c.id == value.id else c for c in settings.connections]
         store.save_settings(settings)
 
+    @app.post("/api/discord/discover")
+    async def discover_discord(request: Request, session=admin_session):
+        from .transports.discord import DiscordTransport
+
+        data = await request.json()
+        role = data.get("role", "capture")
+        if role not in {"capture", "ai"}:
+            raise HTTPException(422, "Choose a bot role")
+        previous = next(
+            (c for c in store.settings().connections if c.id == data.get("connection_id") and c.platform == "discord"),
+            None,
+        )
+        options = merge_settings(previous.account_options(role) if previous else {}, data.get("options", {}))
+        client = DiscordTransport(options, f"discovery:{role}", store.directory, None)
+        try:
+            return await asyncio.wait_for(client.discover(), timeout=15)
+        except Exception as exc:
+            raise HTTPException(400, safe_error(exc)) from exc
+        finally:
+            await client.close()
+
     @app.post("/api/beeper/discover")
     async def discover_beeper(request: Request, session=admin_session):
         data = await request.json()

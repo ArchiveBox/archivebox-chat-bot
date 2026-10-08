@@ -18,6 +18,7 @@ class Message:
     connection: str = ""
     channel_name: str = ""
     source_platform: str = ""
+    native_command: bool = False
 
     @property
     def key(self):

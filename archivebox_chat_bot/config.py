@@ -3,7 +3,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-PLATFORMS = ("beeper", "slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage")
+PLATFORMS = ("beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage")
 
 
 def is_secret(key):
@@ -20,7 +20,7 @@ class Connection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = ""
-    platform: Literal["beeper", "slack", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage"]
+    platform: Literal["beeper", "slack", "discord", "zulip", "telegram", "whatsapp", "messenger", "irc", "imessage"]
     enabled: bool = True
     options: dict = Field(default_factory=dict)
     capture: Account = Field(default_factory=lambda: Account(enabled=True))

@@ -163,3 +163,16 @@ def test_first_run_password_setup_is_one_time_and_persisted(console, tmp_path):
     assert console.post("/auth/setup", json={"password": "replacement-password"}).status_code == 409
     login(console)
     assert console.get("/api/state").status_code == 200
+
+
+def test_discord_setup_requires_token_and_valid_role(console):
+    login = console.post("/auth/login", json={"password": "test-console-password-123"})
+    assert login.status_code == 200
+    console.headers["x-csrf-token"] = login.json()["csrf"]
+    missing = console.post("/api/discord/discover", json={"role": "capture", "options": {}})
+    assert missing.status_code == 400
+    assert "bot token" in missing.json()["detail"]
+    invalid = console.post("/api/discord/discover", json={"role": "unknown"})
+    assert invalid.status_code == 422
+    state = console.get("/api/state").json()
+    assert state["settings"]["connections"] == []

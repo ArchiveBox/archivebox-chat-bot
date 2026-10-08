@@ -1,7 +1,7 @@
 [project]
 name = "archivebox-chat-bot"
 version = "0.1.0"
-description = "ArchiveBox Bot and ArchiveBox AI Bot across Slack, Zulip, Telegram, WhatsApp, IRC, iMessage, and Messenger."
+description = "ArchiveBox Bot and ArchiveBox AI Bot across Slack, Discord, Zulip, Telegram, WhatsApp, IRC, iMessage, and Messenger."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -17,6 +17,7 @@ dependencies = [
     "qrcode[pil]>=8,<9",
     "resvg-py>=0.3,<1",
     "defusedxml>=0.7,<1",
+    "discord-py>=2.6,<3",
 ]
 
 [dependency-groups]

@@ -7,7 +7,8 @@ let csrf = "",
   dirty = false,
   beeperAccounts = [],
   beeperChats = [],
-  beeperState = "";
+  beeperState = "",
+  discordSetup = null;
 const providers = {
   beeper: {
     name: "Beeper",
@@ -27,6 +28,12 @@ const providers = {
       ["client_secret", "OAuth client secret", "password"],
       ["signing_secret", "Signing secret", "password"],
     ],
+  },
+  discord: {
+    name: "Discord",
+    icon: "◖◗",
+    blurb: "Servers, threads, DMs",
+    advanced: [],
   },
   zulip: {
     name: "Zulip",
@@ -376,6 +383,7 @@ async function edit(id, r = "capture", platform) {
   beeperAccounts = [];
   beeperChats = [];
   beeperState = "";
+  discordSetup = null;
   editing = id
     ? structuredClone(current.settings.connections.find((c) => c.id === id))
     : {
@@ -420,6 +428,7 @@ async function edit(id, r = "capture", platform) {
     if (results[1].status === "fulfilled") editing.people = results[1].value.people;
     else toast(results[1].reason.message, true);
     if (!dirty && $("#editor").open) renderEditor();
+    if (editing.platform === "discord") await action(discoverDiscord);
   }
 }
 function renderSetupGuide() {
@@ -437,6 +446,8 @@ function renderSetupGuide() {
     content.append(el("h3", step.title), el("p", step.text.replaceAll("{bot}", bot)));
     if (step.action === "slack-create")
       content.append(link("Create Slack app ↗", `/api/manifest/${role}?create=true&connection_id=${editing.id}&transport=${editing.options.transport || "socket"}`));
+    if (step.action === "discord-create")
+      content.append(link("Create Discord app ↗", "https://discord.com/developers/applications"));
     const file = role === "ai" && step.aiImage ? step.aiImage : step.image;
     if (file) {
       const figure = el("figure"), zoom = el("a"), img = el("img");
@@ -465,6 +476,22 @@ function renderSetupGuide() {
       content.append(figure);
     }
     if (step.field) field(content, step.field, account.options);
+    if (step.action === "discord-connect") {
+      content.append(button(discordSetup ? "Refresh servers" : "Find my bot", discoverDiscord));
+      if (discordSetup) {
+        content.append(el("p", `✓ ${discordSetup.name}`, "inline-note"));
+        content.append(link("Add to Discord ↗", discordSetup.invite_url));
+        const label = el("label", "Discord server"), select = el("select");
+        select.append(new Option("Choose your server", ""));
+        for (const guild of discordSetup.guilds) select.append(new Option(guild.name, guild.id));
+        select.value = editing.options.guild_id || "";
+        select.required = true;
+        select.onchange = () => { editing.options.guild_id = select.value; dirty = true; };
+        label.append(select); content.append(label);
+        if (!discordSetup.guilds.length)
+          content.append(el("p", "Add to Discord → choose your server → Authorize. Return here and Refresh servers.", "inline-note"));
+      }
+    }
     if (step.webhook) {
       const base = current.settings.public_url || location.origin,
         callback = `${base.replace(/\/$/, "")}/connections/${editing.id}/${role}/webhook`;
@@ -494,7 +521,7 @@ function renderEditor() {
     account = editing[role];
   let box = $("#editor-fields");
   box.replaceChildren();
-  $(".editor-layout").classList.toggle("slack-setup", editing.platform === "slack");
+  $(".editor-layout").classList.toggle("guided-setup", ["slack", "discord"].includes(editing.platform));
   renderSetupGuide();
   $("#editor-provider").textContent = p.name;
   $("#editor-title").textContent =
@@ -503,11 +530,11 @@ function renderEditor() {
   $("#remove-connection").hidden = !current.settings.connections.some(
     (c) => c.id === editing.id,
   );
-  if (editing.platform === "slack") {
+  if (["slack", "discord"].includes(editing.platform)) {
     if (role === "capture")
       box.append(el("p", "Connect once → New URLs + Saved URLs are created automatically. Invite ArchiveBox Bot to any other channel you want to use.", "inline-note"));
     else
-      box.append(el("p", "Use a separate Slack app for ArchiveBox AI Bot. Choose who can run tasks under Trusted people below.", "inline-note"));
+      box.append(el("p", `Use a separate ${p.name} app for ArchiveBox AI Bot. Choose who can run tasks under Trusted people below.`, "inline-note"));
     const options = el("details");
     options.open = role === "ai" || Boolean(status(editing, role).ok);
     options.append(el("summary", "Bot preferences & existing channels"));
@@ -565,7 +592,7 @@ function renderEditor() {
     );
   const creds = el("div", undefined, "form-grid");
   box.append(creds);
-  if (editing.platform !== "slack")
+  if (!["slack", "discord"].includes(editing.platform))
     for (const f of p.fields) field(creds, f, account.options);
   if (editing.platform === "beeper") {
     guide.append(link("Open Beeper ↗", "https://www.beeper.com/download"));
@@ -620,7 +647,7 @@ function renderEditor() {
     ]) {
       const label = el("label", title),
         select = el("select");
-      select.append(new Option(editing.platform === "slack" ? `Create #${editing[`${key}_name`]}` : "Choose a conversation", ""));
+      select.append(new Option(["slack", "discord"].includes(editing.platform) ? `Create #${editing[`${key}_name`]}` : "Choose a conversation", ""));
       for (const g of current.groups[editing.id] || [])
         select.append(new Option(g.name, g.channel));
       if (
@@ -705,7 +732,7 @@ function renderEditor() {
     };
   }
   if (role === "capture") {
-    if (editing.platform === "slack") {
+    if (["slack", "discord"].includes(editing.platform)) {
       field(advanced, ["new_channel_name", "New URLs channel name"], editing);
       field(advanced, ["saved_channel_name", "Saved URLs channel name"], editing);
     }
@@ -718,6 +745,14 @@ function renderEditor() {
     );
     field(advanced, ["allow_guests", "Allow guests", "checkbox"], editing);
   }
+}
+async function discoverDiscord() {
+  const id = editing.id, r = role;
+  const result = await api("/api/discord/discover", {method: "POST", body: JSON.stringify({connection_id: id, role: r, options: {...editing.options, ...editing[r].options}})});
+  if (editing.id !== id || role !== r) return;
+  discordSetup = result;
+  if (result.guilds.length === 1 && !editing.options.guild_id) editing.options.guild_id = result.guilds[0].id;
+  renderEditor();
 }
 async function discoverBeeper() {
   const id = editing.id, r = role;
@@ -742,12 +777,12 @@ async function saveConnection(close = true) {
   });
   dirty = false;
   await refresh();
-  if (value.platform === "slack" && value[role].enabled && !status(value, role).ok) {
+  if (["slack", "discord"].includes(value.platform) && value[role].enabled && !status(value, role).ok) {
     $("#setup-guide").open = true;
     throw new Error(statusText(status(value, role)));
   }
   if (close) $("#editor").close();
-  toast(value.platform === "slack" && value[role].enabled ? "Slack connected. Send your bot a DM to get started." : "Connection saved.");
+  toast(["slack", "discord"].includes(value.platform) && value[role].enabled ? `${providers[value.platform].name} connected. Send your bot a DM to get started.` : "Connection saved.");
 }
 function renderJobs(jobs) {
   $("#jobs").replaceChildren();

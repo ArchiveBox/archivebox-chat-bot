@@ -136,6 +136,10 @@ class TransportBot:
                 from .transports.beeper import BeeperTransport
 
                 adapter = BeeperTransport
+            elif connection.platform == "discord":
+                from .transports.discord import DiscordTransport
+
+                adapter = DiscordTransport
             elif connection.platform == "irc":
                 from .transports.irc import IRCTransport
 
@@ -170,7 +174,10 @@ class TransportBot:
         result = await self.call("check")
         self.identity = {
             "user_id": str(result.get("bot_user_id") or result.get("id") or ""),
-            "team_id": self.options.get("server") or self.options.get("homeserver") or self.options.get("base_url", ""),
+            "team_id": result.get("guild_id")
+            or self.options.get("server")
+            or self.options.get("homeserver")
+            or self.options.get("base_url", ""),
         }
         self.capabilities = result.get("capabilities", {})
         if result.get("state", "connected") != "connected":
@@ -198,6 +205,8 @@ class TransportBot:
             is_dm=raw.get("is_dm", False),
             is_mention=raw.get("is_mention", False),
             is_bot=raw.get("is_bot", False),
+            command=raw.get("command", ""),
+            native_command=raw.get("native_command", False),
         )
         self.users[message.user] = {"name": message.user_name, "is_bot": message.is_bot, "is_guest": False}
         if self.settings.platform == "telegram" and message.text.startswith("/"):
@@ -212,7 +221,7 @@ class TransportBot:
         )
         if self.role == "capture" and command:
             message.command, message.text = command[1], command[2] or ""
-        await self.on_message(message)
+        return await self.on_message(message)
 
     async def user(self, user_id):
         if user_id in self.users:
@@ -224,13 +233,19 @@ class TransportBot:
         return {"name": row[0] if row else user_id, "is_bot": bool(row[1]) if row else False, "is_guest": False}
 
     async def recent(self, message):
+        if self.capabilities.get("history") is True:
+            return await self.call("recent", channel=message.channel, message_id=message.ts, thread=message.thread)
         return self.store.recent(self.settings.id, message)
 
     async def react(self, message, status):
+        if message.native_command:
+            return
         if self.capabilities.get("reactions"):
             await self.call("react", channel=message.channel, message_id=message.ts, status=status)
 
     async def post_text(self, message, text):
+        if message.native_command:
+            return await self.call("respond", message_id=message.ts, text=text)
         result = await self.call(
             "send",
             channel=message.channel,
@@ -256,6 +271,10 @@ class TransportBot:
         return message_id
 
     async def post_card(self, snapshot, detail_url, media, client_id):
+        if self.capabilities.get("cards"):
+            return await self.call(
+                "post_card", channel=self.settings.saved_channel, snapshot=snapshot, detail_url=detail_url, media=media
+            )
         title = " ".join((snapshot.get("title") or snapshot["url"]).split())[:100]
         markdown = self.settings.platform == "telegram" or self.options.get("transport") == "matrix"
         headline = f"[{title}]({detail_url})" if markdown else f"{title} — {detail_url}"
@@ -277,6 +296,11 @@ class TransportBot:
     async def channels(self):
         result = await self.call("channels")
         return result.get("channels", []) if isinstance(result, dict) else result
+
+    async def setup_channels(self):
+        if self.transport and hasattr(self.transport, "setup_channels"):
+            return await self.transport.setup_channels(self.settings)
+        return {}
 
     async def close(self):
         if self.transport:
