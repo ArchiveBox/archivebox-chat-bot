@@ -226,7 +226,9 @@ class TransportBot:
             message.text.strip(),
             re.DOTALL,
         )
-        if self.role == "capture" and command:
+        # Explicit save commands on the AI bot opt into the regular capture
+        # path. Other AI text remains an OpenCode request.
+        if command and (self.role == "capture" or (self.role == "ai" and command[1] == "save")):
             message.command, message.text = command[1], command[2] or ""
         return await self.on_message(message)
 
