@@ -82,18 +82,13 @@ docker compose up -d
 </table>
 
 <details>
-<summary><b>Where to get Slack tokens · same screenshots as the setup wizard</b></summary>
+<summary><b>Where to get Slack tokens</b></summary>
 
-<table>
-<tr><th width="33%">Install the app</th><th width="33%">Copy Bot User OAuth Token</th><th width="33%">Generate App-Level Token</th></tr>
-<tr>
-<td><a href="archivebox_chat_bot/static/guides/slack-install.png"><img src="archivebox_chat_bot/static/guides/slack-install.png" width="100%" alt="Slack's official Install to Workspace screen"></a></td>
-<td><a href="archivebox_chat_bot/static/guides/slack-bot-token.png"><img src="archivebox_chat_bot/static/guides/slack-bot-token.png" width="100%" alt="Slack's official bot-token Copy screen, with the example token blurred by Slack"></a></td>
-<td><a href="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg"><img src="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg" width="100%" alt="Our Slack app's token-generation control and connections:write scope"></a></td>
-</tr>
-</table>
+- Install the app: [Slack app setup](https://docs.slack.dev/tools/bolt-js/creating-an-app/).
+- Copy the bot token: [Slack token types](https://docs.slack.dev/authentication/tokens/).
+- Generate the app token: [Socket Mode setup](https://docs.slack.dev/tools/python-slack-sdk/socket-mode/).
 
-Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/). App-level token: our installed app.
+<a href="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg"><img src="archivebox_chat_bot/static/guides/slack-app-token-setup.jpg" width="620" alt="Our Slack app's token-generation control and connections:write scope"></a>
 
 </details>
 
@@ -190,16 +185,7 @@ Install/token examples: [Slack documentation](https://docs.slack.dev/tools/bolt-
 - **Connect:** [Settings → Agents → Create an agent → View API key](https://www.whatsapp.com/developer/WhatsApp-Agent-Platform-Developer-Manual.pdf#page=3) on your primary phone.
 - **Groups:** choose QR pairing → [Linked Devices → Link a Device](https://faq.whatsapp.com/1317564962315842). [Agent keys](https://faq.whatsapp.com/1050934623978152) support creator DMs only.
 
-<table>
-<tr><th width="33%">1 · iPhone: create agent → API key</th><th width="33%">2 · Android: add an agent</th><th width="33%">3 · Save from a DM</th></tr>
-<tr>
-<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/whatsapp-agents-ios.webp"><img src="archivebox_chat_bot/static/guides/whatsapp-agents-ios.webp" width="100%" alt="WABetaInfo iPhone example showing Create an agent, name, and View API key"></a></td>
-<td width="33%" valign="top"><a href="archivebox_chat_bot/static/guides/whatsapp-agents-android.webp"><img src="archivebox_chat_bot/static/guides/whatsapp-agents-android.webp" width="100%" alt="WABetaInfo Android example showing Agents and Add an agent"></a></td>
-<td width="33%" valign="top"><a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="100%" alt="Real WhatsApp Agent DM with captured cancellation references and screenshots"></a></td>
-</tr>
-</table>
-
-Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents-on-ios/) · [Android](https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents/). Capture screenshot: our live test.
+<a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="900" alt="Real WhatsApp Agent DM with captured cancellation references and screenshots"></a>
 
 ---
 
@@ -277,19 +263,10 @@ Phone setup examples: [WABetaInfo iOS](https://wabetainfo.com/whatsapp-is-rollin
 - **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
 - **Token:** [Settings → Integrations → Approved connections → +](https://developers.beeper.com/desktop-api/auth/); allow sending. [Enable remote access](https://developers.beeper.com/desktop-api/advanced/remote-access/) for Docker.
 
-<table>
-<tr><th width="50%">1 · Create a Beeper API token</th><th width="50%">2 · Check the server</th></tr>
-<tr>
-<td width="50%" valign="top"><a href="archivebox_chat_bot/static/guides/beeper-token.png"><img src="archivebox_chat_bot/static/guides/beeper-token.png" width="100%" alt="Felix Krause example of Beeper API token creation; enable Allow sensitive actions for sending"></a></td>
-<td width="50%" valign="top"><a href="screenshots/beeper-setup.png"><img src="screenshots/beeper-setup.png" width="100%" alt="Actual running Docker Beeper Server reporting that sign-in is still required"></a></td>
-</tr>
-</table>
-
 <details>
-<summary><b>Docker → Beeper address & screenshot credit</b></summary>
+<summary><b>Docker → Beeper address</b></summary>
 
 - Use the Beeper server's reachable network address; container `localhost` points at the bot itself. Beeper runs separately; iMessage needs a Mac.
-- Token example: [Felix Krause](https://krausefx.com/blog/openclaw-my-automation-setup), earlier Beeper UI. Enable **Allow sensitive actions** for replies (off in that image).
 
 </details>
 
@@ -366,7 +343,7 @@ uv run ruff check .
 
 - Python: shared capture/agent engine, queue, permissions, Chatbot Admin Console.
 - Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, [discord.py](https://discordpy.readthedocs.io/), pydle, imsg.
-- Live tests: `tests/test_*_live.py`. Chat screenshots are our sessions; external setup screenshots credit their publishers. Provider logos are official website assets; IRC uses the Libera.Chat network logo, and the bundled Messenger logo comes from [Messenger](https://www.messenger.com/).
+- Live tests: `tests/test_*_live.py`. Chat and setup screenshots are our sessions. Provider logos are official website assets; IRC uses the Libera.Chat network logo, and the bundled Messenger logo comes from [Messenger](https://www.messenger.com/).
 
 </details>
 

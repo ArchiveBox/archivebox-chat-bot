@@ -70,7 +70,7 @@ def test_provider_guides_load_real_images_and_change_with_transport():
             expect(guide.locator(".guide-steps > li")).to_have_count(3)
             assert guide.locator(".guide-docs a").count() >= 3
             images = guide.locator("img")
-            if provider == "Email":
+            if provider in {"Email", "WhatsApp", "Beeper"}:
                 expect(images).to_have_count(0)
             else:
                 assert images.count() >= 1, provider

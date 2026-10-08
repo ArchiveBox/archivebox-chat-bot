@@ -1,4 +1,4 @@
-// Shared by both bot roles. Images are real provider UI; external examples retain attribution.
+// Shared by both bot roles. Images show our real provider setup screens.
 const setupGuides = {
   email: [
     {
@@ -48,18 +48,12 @@ const setupGuides = {
       title: "Create and install your Slack app",
       text: "Choose your workspace → Create → Install to Workspace → Allow. Permissions, events, and commands are already filled in.",
       action: "slack-create",
-      image: "slack-install.png",
-      caption: "Install to Workspace · Slack documentation",
-      source: "https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/",
       docs: [["Slack app setup", "https://docs.slack.dev/tools/bolt-js/creating-an-app/"]],
     },
     {
       title: "Copy the bot token",
       text: "OAuth & Permissions → Bot User OAuth Token → Copy. Paste it here.",
       field: ["bot_token", "Bot token · starts with xoxb-", "password"],
-      image: "slack-bot-token.png",
-      caption: "Bot User OAuth Token · Slack documentation (example token blurred by Slack)",
-      source: "https://docs.slack.dev/tools/bolt-js/tutorials/custom-steps-workflow-builder-new/",
       docs: [["Slack token types", "https://docs.slack.dev/authentication/tokens/"]],
     },
     {
@@ -118,17 +112,11 @@ const setupGuides = {
     {
       title: "Create an agent on your phone",
       text: "On your primary phone: WhatsApp → Settings → Agents → Create an agent. Name it {bot}. This feature is only available on eligible accounts; WhatsApp Web cannot create agents.",
-      image: "whatsapp-agents-android.webp",
-      caption: "Android example · Agents → add a named agent. Screenshot: WABetaInfo.",
-      source: "https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents/",
       docs: [["WhatsApp Agents help", "https://faq.whatsapp.com/1050934623978152"]],
     },
     {
       title: "Copy the agent's API key",
       text: "Open the new agent chat → View API key, or tap its name → Chat info → API key. Copy it into WhatsApp agent API key here. Each bot needs its own agent key.",
-      image: "whatsapp-agents-ios.webp",
-      caption: "iPhone example · View API key in the new agent chat (rightmost screen). Screenshot: WABetaInfo.",
-      source: "https://wabetainfo.com/whatsapp-is-rolling-out-chats-with-third-party-agents-on-ios/",
       docs: [["Official setup steps · page 3", "https://www.whatsapp.com/developer/WhatsApp-Agent-Platform-Developer-Manual.pdf#page=3"]],
     },
     {
@@ -240,9 +228,6 @@ const setupGuides = {
     {
       title: "Create an API access token",
       text: "Integrations → Approved connections → +. Name the token {bot}, allow sending messages (Allow sensitive actions), create it, and paste it here.",
-      image: "beeper-token.png",
-      caption: "Earlier Beeper token dialog · enable Allow sensitive actions for replies. Screenshot: Felix Krause.",
-      source: "https://krausefx.com/blog/openclaw-my-automation-setup",
       docs: [["Beeper authentication", "https://developers.beeper.com/desktop-api/auth/"]],
     },
     {
