@@ -22,6 +22,10 @@ class Artifact(NamedTuple):
     url: str
 
 
+class OpenCodeError(RuntimeError):
+    """A completed agent failure, which polling cannot resolve."""
+
+
 class ArchiveBox:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -354,7 +358,23 @@ class ArchiveBox:
         response = messages[-1]
         if response.get("info", {}).get("error"):
             error = response["info"]["error"]
-            raise RuntimeError(f"OpenCode could not complete the request ({error.get('name', 'agent error')})")
+            data = error.get("data", {})
+            provider = data.get("providerID") or response["info"].get("providerID", "provider")
+            name = error.get("name", "agent error")
+            status = data.get("statusCode")
+            # Provider response bodies can echo keys and authorization headers.
+            # Report the failure category, never the raw upstream response.
+            if name == "ProviderAuthError" or status in (401, 403):
+                raise OpenCodeError(
+                    f"OpenCode {provider} authentication failed ({name}"
+                    + (f", HTTP {status}" if status else "")
+                    + "). Check the provider account in ArchiveBox → AI."
+                )
+            raise OpenCodeError(
+                f"OpenCode {provider} failed ({name}"
+                + (f", HTTP {status}" if status else "")
+                + "). Inspect its session in ArchiveBox → AI."
+            )
         info = response["info"]
         if not info.get("time", {}).get("completed") or info.get("finish") in {None, "tool-calls", "unknown"}:
             return None

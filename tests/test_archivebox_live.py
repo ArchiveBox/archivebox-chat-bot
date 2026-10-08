@@ -189,6 +189,15 @@ async def test_async_opencode_task_survives_client_reconnect(archivebox):
         await resumed.close()
 
 
+async def test_recorded_provider_failure_is_terminal_and_actionable(archivebox):
+    """Read a real failed session without resubmitting its prompt."""
+    from archivebox_chat_bot.archivebox import OpenCodeError
+
+    session = await archivebox._agent_request("GET", "session/" + os.environ["ARCHIVEBOX_TEST_FAILED_SESSION_ID"])
+    with pytest.raises(OpenCodeError, match=r"google.*authentication.*ArchiveBox"):
+        await archivebox.session_answer(session)
+
+
 async def test_repeated_human_submissions_create_tagged_captures(archivebox):
     target = f"https://example.com/?slack-repeated-submission={uuid4().hex}"
     first = await archivebox.add([target], ["slack", "First Slack Submitter"])

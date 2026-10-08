@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import httpx
 from slack_sdk.errors import SlackApiError
 
-from .archivebox import ArchiveBox
+from .archivebox import ArchiveBox, OpenCodeError
 from .models import Message
 from .store import now
 from .text import extract_urls, slack_escape, submission_tags, submitter_tag
@@ -502,6 +502,11 @@ class Engine:
                         error="Answer delivery interrupted; inspect chat before retrying.",
                     )
                 raise
+            except OpenCodeError as exc:
+                # OpenCode already recorded a final error. Polling this same
+                # response again only floods the activity log; retry is explicit.
+                self.store.update(job["id"], "failed", result, error=safe_error(exc))
+                self.error = safe_error(exc)
             except Exception as exc:
                 log.exception("Agent result reconciliation failed")
                 if self.store.get(job["id"])["state"] == "done":
