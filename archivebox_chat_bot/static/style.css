@@ -1,8 +1,9 @@
 :root {
-  --ink: #17372e;
-  --muted: #728078;
-  --bg: #f6f7f2;
-  --line: #e1e6dc;
+  --ink: #271b21;
+  --brand: #9b2854;
+  --muted: #7c6872;
+  --bg: #fbf8fa;
+  --line: #eadde3;
 }
 * {
   box-sizing: border-box;
@@ -53,8 +54,8 @@ a:hover {
 }
 aside {
   width: 248px;
-  background: #17392f;
-  color: #e9f0e7;
+  background: #351b27;
+  color: #fff1f6;
   padding: 35px 22px;
   display: flex;
   flex-direction: column;
@@ -77,12 +78,12 @@ aside {
   display: block;
   font-size: 8px;
   letter-spacing: 2px;
-  color: #aebfb4;
+  color: #d3adbf;
   margin-top: 10px;
 }
 .nav {
   border: 0;
-  color: #c3d3c9;
+  color: #e6ced9;
   background: transparent;
   display: flex;
   align-items: center;
@@ -101,8 +102,8 @@ aside {
   background: #ffffff10;
 }
 .nav.active {
-  background: #e0efc516;
-  color: #d6efa8;
+  background: #efbfd316;
+  color: #ffc6da;
 }
 .aside-bottom {
   margin-top: auto;
@@ -115,7 +116,7 @@ aside {
 .aside-bottom small {
   font-size: 8px;
   letter-spacing: 1.4px;
-  color: #799588;
+  color: #c79db1;
 }
 .text-button {
   background: none;
@@ -142,14 +143,14 @@ header {
   font-size: 11px;
 }
 header a {
-  color: #48614e;
+  color: #9b2854;
 }
 .breadcrumb {
   color: var(--muted);
 }
 .breadcrumb span {
   padding: 0 13px;
-  color: #abb5a7;
+  color: #bd9fac;
 }
 .breadcrumb strong {
   font-weight: 500;
@@ -171,7 +172,7 @@ header a {
   font-size: 9px;
   letter-spacing: 1.6px;
   font-weight: 650;
-  color: #5a7861;
+  color: #9b2854;
   margin: 0 0 14px;
 }
 h1 {
@@ -199,9 +200,9 @@ h3 {
   margin: 0;
 }
 .badge {
-  border: 1px solid #dce3d4;
-  background: #edf2e6;
-  color: #647c55;
+  border: 1px solid #ecd1dd;
+  background: #f9e8ef;
+  color: #9b2854;
   border-radius: 40px;
   padding: 8px 13px;
   font-size: 10px;
@@ -227,7 +228,7 @@ h3 {
 }
 .section-title > span {
   font-size: 11px;
-  color: #899581;
+  color: #947381;
 }
 .panel {
   background: #fff;
@@ -238,7 +239,7 @@ h3 {
 footer {
   display: flex;
   justify-content: space-between;
-  color: #929c8d;
+  color: #947381;
   font-size: 9px;
   padding: 25px 0 21px;
   margin-top: 10px;
@@ -247,14 +248,14 @@ button:not(.nav, .text-button),
 .button {
   border: 0;
   border-radius: 6px;
-  background: var(--ink);
+  background: var(--brand);
   color: white;
   padding: 10px 16px;
   display: inline-block;
   font-size: 11px;
 }
 .secondary {
-  background: #f2f5ec !important;
+  background: #f9edf2 !important;
   color: var(--ink) !important;
   border: 1px solid var(--line) !important;
 }
@@ -294,13 +295,13 @@ label {
 label small {
   font-size: 9px;
   font-weight: 400;
-  color: #85917f;
+  color: #947381;
 }
 input,
 textarea,
 select {
-  border: 1px solid #dce2d5;
-  background: #fcfdf9;
+  border: 1px solid #eadde3;
+  background: #fffafd;
   border-radius: 5px;
   padding: 10px 12px;
   color: var(--ink);
@@ -314,12 +315,12 @@ textarea {
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid #acc87c;
+  outline: 2px solid #d59aae;
   outline-offset: 1px;
 }
 input::placeholder,
 textarea::placeholder {
-  color: #9aa693;
+  color: #b495a3;
 }
 details {
   border-top: 1px solid var(--line);
@@ -328,15 +329,15 @@ details {
 }
 summary {
   font-size: 11px;
-  color: #658056;
+  color: #9b2854;
   cursor: pointer;
 }
 .inline-note {
   padding: 14px 17px;
-  background: #f2f5e9;
+  background: #faeef3;
   border-radius: 7px;
   font-size: 11px;
-  color: #687d51;
+  color: #87516a;
   margin: 15px 0;
 }
 .button-row {
@@ -348,7 +349,7 @@ summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #edf0e6;
+  border-bottom: 1px solid #eee1e8;
   padding: 10px 0;
 }
 .toggle-row:last-child {
@@ -367,7 +368,7 @@ summary {
   width: 35px;
   height: 20px;
   border: 0;
-  background: #d6ddce;
+  background: #e2ced7;
   border-radius: 20px;
   padding: 3px;
   flex-shrink: 0;
@@ -383,14 +384,14 @@ summary {
   transition: transform 0.2s;
 }
 .toggle-row input:checked {
-  background: #6f9653;
+  background: #9b2854;
 }
 .toggle-row input:checked:before {
   transform: translateX(15px);
 }
 .job {
   padding: 10px 0;
-  border-bottom: 1px solid #edf0e6;
+  border-bottom: 1px solid #eee1e8;
   display: flex;
   gap: 16px;
   align-items: center;
@@ -409,7 +410,7 @@ summary {
 }
 .job-meta {
   font-size: 9px;
-  color: #8a9583;
+  color: #947381;
   margin-top: 5px;
 }
 .job-error {
@@ -420,8 +421,8 @@ summary {
 .job-state {
   border-radius: 4px;
   padding: 5px 8px;
-  background: #edf3e3;
-  color: #657f4e;
+  background: #faeaf1;
+  color: #9b2854;
   font-size: 9px;
   min-width: 70px;
   text-align: center;
@@ -434,7 +435,7 @@ summary {
 .empty {
   padding: 20px;
   text-align: center;
-  color: #87937c;
+  color: #947381;
 }
 .toast {
   position: fixed;
@@ -442,10 +443,10 @@ summary {
   right: 35px;
   top: 88px;
   padding: 14px 22px;
-  background: #193b31;
+  background: #9b2854;
   color: white;
   border-radius: 7px;
-  box-shadow: 0 6px 30px #16342f22;
+  box-shadow: 0 6px 30px #351b2722;
   font-size: 12px;
   max-width: 440px;
 }
@@ -456,7 +457,7 @@ summary {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #eaf0df, #f8faf2);
+  background: linear-gradient(135deg, #f6e6ee, #fffafd);
 }
 .login-card {
   width: 430px;
@@ -464,7 +465,7 @@ summary {
   border: 1px solid var(--line);
   padding: 45px;
   border-radius: 15px;
-  box-shadow: 0 20px 70px #17372e0c;
+  box-shadow: 0 20px 70px #271b210c;
 }
 .login-brand {
   text-align: center;
@@ -627,7 +628,7 @@ nav {
   font-size: 10px;
   letter-spacing: 2px;
   font-weight: 650;
-  color: #748367;
+  color: #9b2854;
 }
 .provider-grid {
   display: grid;
@@ -649,8 +650,8 @@ nav {
   min-height: 86px;
 }
 .provider-card:hover {
-  border-color: #729a58 !important;
-  background: #fafff4 !important;
+  border-color: #9b2854 !important;
+  background: #fff5f9 !important;
 }
 .provider-icon {
   font-size: 20px;
@@ -668,7 +669,7 @@ nav {
   right: 19px;
   top: 20px;
   font-size: 22px;
-  color: #7b8f71;
+  color: #b46d8c;
 }
 .connection-row {
   display: flex;
@@ -702,9 +703,9 @@ nav {
 }
 .badge {
   border-radius: 20px;
-  background: #e9f2da;
+  background: #fae6ef;
   padding: 7px 12px;
-  color: #4b6940;
+  color: #8a3358;
   font-size: 11px;
 }
 .content {
@@ -716,11 +717,11 @@ dialog {
   border-radius: 15px;
   width: min(770px, calc(100vw - 30px));
   max-height: 90vh;
-  box-shadow: 0 30px 100px #17372e40;
+  box-shadow: 0 30px 100px #271b2140;
   color: var(--ink);
 }
 dialog::backdrop {
-  background: #112a2399;
+  background: #271b2199;
   backdrop-filter: blur(3px);
 }
 #connection-form {
@@ -777,7 +778,7 @@ dialog::backdrop {
 }
 input[type="checkbox"] {
   width: 19px;
-  accent-color: #527b3a;
+  accent-color: #9b2854;
 }
 label:has(input[type="checkbox"]) {
   flex-direction: row;
@@ -870,9 +871,9 @@ dialog:has(.setup-guide[open]) {
 .setup-guide {
   margin: 0;
   padding: 15px 18px;
-  border: 1px solid #dce6cd;
+  border: 1px solid #edd2df;
   border-radius: 10px;
-  background: #f7faef;
+  background: #fff7fa;
 }
 .setup-guide summary {
   font-size: 13px;
@@ -888,7 +889,7 @@ dialog:has(.setup-guide[open]) {
   font-size: 12px;
 }
 .guide-steps > li::marker {
-  color: #5b793e;
+  color: #9b2854;
   font-weight: 700;
 }
 .guide-steps > li:last-child {
@@ -900,7 +901,7 @@ dialog:has(.setup-guide[open]) {
 }
 .guide-step p {
   line-height: 1.6;
-  color: #53604d;
+  color: #6c5360;
 }
 .guide-step figure {
   margin: 12px 0 8px;
@@ -910,13 +911,13 @@ dialog:has(.setup-guide[open]) {
   width: 100%;
   max-height: 230px;
   object-fit: contain;
-  background: #e9eee4;
+  background: #f2e6ec;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 .guide-step figcaption {
   font-size: 10px;
-  color: #68755e;
+  color: #7c6872;
   margin-top: 6px;
   line-height: 1.5;
 }
@@ -928,7 +929,7 @@ dialog:has(.setup-guide[open]) {
 }
 .guide-docs a,
 .guide-step figcaption a {
-  color: #365d2b;
+  color: #8a3358;
   text-decoration: underline;
   font-size: 11px;
 }
@@ -956,7 +957,7 @@ dialog:has(.setup-guide[open]) {
 .server-status {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #476c47;
+  color: #9b2854;
 }
 .server-status.offline, .event-error {
   color: #a33131;
@@ -992,7 +993,7 @@ dialog:has(.setup-guide[open]) {
 .event-table th {
   position: sticky;
   top: 0;
-  background: #f6f7f2;
+  background: #fbf8fa;
 }
 .event-table td:first-child, .event-table td:nth-child(5), .event-table td:last-child {
   white-space: nowrap;
