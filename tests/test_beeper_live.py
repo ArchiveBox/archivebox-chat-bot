@@ -130,3 +130,35 @@ async def test_real_send_confirms_upstream_success(tmp_path):
         assert message_id not in {events.get_nowait()["id"] for _ in range(events.qsize())}
     finally:
         await transport.close()
+
+
+async def test_real_desktop_send_without_bridge_status_survives_restart(tmp_path):
+    """Run against a Desktop bridge that resolves IDs without sendStatus."""
+    assert os.environ["BEEPER_TEST_ALLOW_SEND"] == "1"
+    options = {**credentials(), "include_own_messages": True}
+    channel = options["chat_ids"][0]
+    events = asyncio.Queue()
+    transport = BeeperTransport(options, "acceptance:capture", tmp_path, events.put)
+    try:
+        await transport.start()
+        text = "ArchiveBox bot delivery check " + uuid.uuid4().hex
+        message_id = await transport.send(channel, text)
+        message = await transport._request(
+            "GET", f"/v1/chats/{transport._part(channel)}/messages/{transport._part(message_id)}"
+        )
+        assert "sendStatus" not in message  # This test exercises the actual Desktop contract.
+        assert message["text"] == text
+        assert message["accountID"] == options["account_id"]
+        assert message["chatID"] == channel
+        assert message["isSender"] is True
+        saved = json.loads(transport.path.read_text())
+        assert message_id in saved["outbound_message_ids"][channel]
+    finally:
+        await transport.close()
+    restarted = BeeperTransport(options, "acceptance:capture", tmp_path, events.put)
+    try:
+        await restarted.start()
+        assert message_id not in {events.get_nowait()["id"] for _ in range(events.qsize())}
+        assert message_id not in restarted.state["outbound_message_ids"].get(channel, [])
+    finally:
+        await restarted.close()

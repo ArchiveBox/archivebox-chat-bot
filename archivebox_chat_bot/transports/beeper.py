@@ -243,6 +243,20 @@ class BeeperTransport:
         outbound_by_chat = self.state["outbound_message_ids"]
         for channel in sorted(self.chat_ids):
             outbound = set(outbound_by_chat.get(channel, []))
+            # A restart can occur after Beeper accepts a pending ID but before
+            # it resolves. Resolve these IDs before accepting own messages.
+            for sent_id in tuple(outbound):
+                sent = await self._request(
+                    "GET", f"/v1/chats/{self._part(channel)}/messages/{self._part(sent_id)}", allow_missing=True
+                )
+                if sent:
+                    if sent.get("accountID") != self.network_account or sent.get("chatID") != channel:
+                        raise RuntimeError("Beeper outbound message belongs to another account or chat")
+                    outbound.remove(sent_id)
+                    outbound.add(sent["id"])
+            if outbound:
+                outbound_by_chat[channel] = sorted(outbound)
+                self._save()
             chat = await self._chat(channel)
             since = datetime.fromisoformat(self.state["selected"][channel])
             cursor = self.state["cursors"].get(channel)
@@ -326,6 +340,9 @@ class BeeperTransport:
         if result.get("chatID") != channel or not result.get("pendingMessageID"):
             raise RuntimeError("Beeper send routing is uncertain; inspect the chat before retrying")
         pending = result["pendingMessageID"]
+        outbound = self.state["outbound_message_ids"].setdefault(channel, [])
+        outbound.append(pending)
+        self._save()  # Suppress our reply even if delivery confirmation times out.
         try:
             async with asyncio.timeout(60):
                 while True:
@@ -337,11 +354,21 @@ class BeeperTransport:
                         continue
                     if message.get("accountID") != self.network_account or message.get("chatID") != channel:
                         raise RuntimeError("Beeper send confirmation belongs to another account or chat")
-                    status = message.get("sendStatus", {}).get("status")
+                    resolved = message["id"]
+                    if resolved != pending and pending in outbound:
+                        outbound.remove(pending)
+                        if resolved not in outbound:
+                            outbound.append(resolved)
+                        self._save()
+                    status = (message.get("sendStatus") or {}).get("status")
                     if status == "SUCCESS":
-                        return message["id"]
+                        return resolved
                     if status in {"FAIL_RETRIABLE", "FAIL_PERMANENT"}:
                         raise RuntimeError("Beeper reports failed delivery; inspect the chat before retrying")
+                    # Desktop bridges can omit sendStatus after resolving the
+                    # pending ID. An explicit PENDING or failure still wins.
+                    if status is None and resolved != pending and message.get("isSender"):
+                        return resolved
                     await asyncio.sleep(1)
         except TimeoutError:
             raise RuntimeError("Beeper delivery is still unconfirmed; inspect the chat before retrying") from None
@@ -406,10 +433,6 @@ class BeeperTransport:
                         payload["replyToMessageID"] = thread
                     message_id = await self._confirmed_send(channel, payload)
                     sent.append(message_id)
-                    outbound = self.state["outbound_message_ids"].setdefault(channel, [])
-                    if message_id not in outbound:
-                        outbound.append(message_id)
-                    self._save()
             except Exception:
                 if sent:
                     raise RuntimeError("Beeper message partially delivered; inspect the chat before retrying") from None

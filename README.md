@@ -139,14 +139,15 @@ docker compose up -d
 </tr>
 </table>
 
-<p><strong>Live Cabbage check (2026-10-08):</strong> A channel mention and an AI DM were handled, but both Ars Technica URLs resolve to snapshots whose captured response is <code>403 Forbidden</code>; replay shows that error instead of article content. A separate capture-bot DM submission is still waiting on Discord hCaptcha and is not counted as a completed DM capture.</p>
+<p><strong>Live Cabbage check (2026-10-08):</strong> A channel mention, capture-bot DM, and AI DM were handled. All tested Ars Technica URLs resolve to snapshots whose captured response is <code>403 Forbidden</code>; replay shows that error instead of article content.</p>
 
 <table>
-<tr><th width="33%">Capture-bot channel mention</th><th width="33%">Saved URL cards</th><th width="33%">AI DM reply</th></tr>
+<tr><th width="25%">Capture-bot channel mention</th><th width="25%">Capture-bot DM</th><th width="25%">Saved URL cards</th><th width="25%">AI DM reply</th></tr>
 <tr>
-<td width="33%" valign="top"><a href="screenshots/discord-new-urls-cabbage.jpg"><img src="screenshots/discord-new-urls-cabbage.jpg" width="100%" alt="Live Discord channel mention with Ars Technica link previews and bot reaction"></a></td>
-<td width="33%" valign="top"><a href="screenshots/discord-saved-urls-cabbage.jpg"><img src="screenshots/discord-saved-urls-cabbage.jpg" width="100%" alt="Live Discord saved-url cards clearly labeled 403 Forbidden for the Ars Technica captures"></a></td>
-<td width="33%" valign="top"><a href="screenshots/discord-ai-dm-response-cabbage.jpg"><img src="screenshots/discord-ai-dm-response-cabbage.jpg" width="100%" alt="Live Discord AI DM reply reusing the existing 403 Forbidden snapshot"></a></td>
+<td width="25%" valign="top"><a href="screenshots/discord-new-urls-cabbage.jpg"><img src="screenshots/discord-new-urls-cabbage.jpg" width="100%" alt="Live Discord channel mention with Ars Technica link previews and bot reaction"></a></td>
+<td width="25%" valign="top"><a href="screenshots/discord-bot-dm-capture-cabbage.jpg"><img src="screenshots/discord-bot-dm-capture-cabbage.jpg" width="100%" alt="Live Discord capture-bot DM with both Ars Technica URLs, embeds, and completion reaction"></a></td>
+<td width="25%" valign="top"><a href="screenshots/discord-saved-urls-cabbage.jpg"><img src="screenshots/discord-saved-urls-cabbage.jpg" width="100%" alt="Live Discord saved-url cards clearly labeled 403 Forbidden for the Ars Technica captures"></a></td>
+<td width="25%" valign="top"><a href="screenshots/discord-ai-dm-response-cabbage.jpg"><img src="screenshots/discord-ai-dm-response-cabbage.jpg" width="100%" alt="Live Discord AI DM reply reusing the existing 403 Forbidden snapshot"></a></td>
 </tr>
 </table>
 
@@ -232,6 +233,16 @@ docker compose up -d
 <tr>
 <td width="50%" valign="top"><a href="screenshots/irc-config.png"><img src="screenshots/irc-config.png" width="100%" alt="Actual IRC bot connection preferences in the Chatbot Admin Console"></a></td>
 <td width="50%" valign="top"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC channel with archived Python asyncio references"></a></td>
+</tr>
+</table>
+
+<p><strong>Live Cabbage check (2026-10-08):</strong> In the signed-in Lounge UI, <code>ArchiveBoxTester</code> mentioned <code>ArchiveBoxCapture</code> in <code>#new-urls</code> and posted two Ars Technica URLs. The URL messages triggered separate captures; the October snapshot completed with title <code>403 Forbidden</code>, while the April crawl was still queued during this check. The bot's saved-channel card links to the replay and source URL, but the captured article content is blocked.</p>
+
+<table>
+<tr><th width="50%">Real IRC submission</th><th width="50%">Saved snapshot result</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/irc-new-urls-cabbage.jpg"><img src="screenshots/irc-new-urls-cabbage.jpg" width="100%" alt="Real Lounge UI mention and two Ars Technica URL messages in the IRC capture channel"></a></td>
+<td width="50%" valign="top"><a href="screenshots/irc-saved-urls-cabbage.jpg"><img src="screenshots/irc-saved-urls-cabbage.jpg" width="100%" alt="IRC saved channel cards for Ars Technica captures, visibly showing 403 Forbidden and replay links"></a></td>
 </tr>
 </table>
 
