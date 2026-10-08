@@ -267,7 +267,7 @@ function updateLocalUrlWarning() {
   const local = (value) => {
     try {
       const host = new URL(value).hostname.toLowerCase().replace(/\.$/, "");
-      return host === "localhost" || host.endsWith(".localhost") || /^127\./.test(host) || host === "[::1]";
+      return host === "localhost" || host.endsWith(".localhost") || /^127\.\d+\.\d+\.\d+$/.test(host) || host === "[::1]";
     } catch { return false; }
   };
   const server = form.elements.archivebox_url.value;
@@ -288,7 +288,7 @@ function renderConnections() {
       el("h3", `${p.icon} ${name(c)}`),
       el(
         "p",
-        `${statusText(status(c, "capture"))} · ${c.ai.enabled ? "AI enabled" : "AI optional"}`,
+        `${statusText(status(c, c.capture.enabled ? "capture" : "ai"))} · ${c.ai.enabled ? "AI enabled" : "AI optional"}`,
       ),
     );
     row.append(

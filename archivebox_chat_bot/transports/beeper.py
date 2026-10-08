@@ -92,15 +92,24 @@ class BeeperTransport:
         self.state["identity"] = identity
         self._save()
         self.identity = account
-        caps = account.get("capabilities") or {}
+        # Account capabilities are optional. Selected chats report the actual
+        # network/conversation capabilities; send/react validate the destination again.
+        capabilities = [(await self._chat(channel)).get("capabilities") or {} for channel in sorted(self.chat_ids)]
+        if not capabilities:
+            capabilities = [account.get("capabilities") or {}]
         return {
             "id": "beeper:"
             + hashlib.sha256(json.dumps([self.base_url, self.network_account, identity]).encode()).hexdigest(),
             "name": account["user"].get("fullName") or account["user"].get("username") or account.get("network"),
             "capabilities": {
-                "reactions": caps.get("reaction", 0) > 0,
-                "media": bool(caps.get("attachments")),
-                "threads": caps.get("reply", 0) > 0,
+                "reactions": any(caps.get("reaction", 0) > 0 for caps in capabilities),
+                "media": any(
+                    level > 0
+                    for caps in capabilities
+                    for attachment in caps.get("attachments", {}).values()
+                    for level in attachment.get("mimeTypes", {}).values()
+                ),
+                "threads": any(caps.get("reply", 0) > 0 for caps in capabilities),
             },
         }
 
@@ -186,6 +195,8 @@ class BeeperTransport:
                 if newest is None:
                     newest = page.get("newestCursor")
                 pages.append(page)
+                if page["hasMore"] and not page["items"]:
+                    raise RuntimeError("Beeper returned an empty page with more messages; cursor was not advanced")
                 if not page["hasMore"] or not page["items"]:
                     break
                 if not cursor and min(datetime.fromisoformat(m["timestamp"]) for m in page["items"]) < since:
@@ -287,12 +298,22 @@ class BeeperTransport:
             data = base64.b64decode(item["data"], validate=True)
             if not data or (capability.get("maxSize") and len(data) > capability["maxSize"]):
                 raise ValueError("Beeper attachment is empty or exceeds this network's limit")
-            attachments.append((item, kind))
+            attachments.append((item, kind, capability))
         if not text and not attachments:
             raise ValueError("A Beeper message requires text or an attachment")
         async with self.send_lock:
-            payloads = [{"text": text}] if text else []
-            for item, kind in attachments:
+            payloads = []
+            caption = bool(
+                text
+                and attachments
+                and attachments[0][2].get("caption", 0) > 0
+                and (
+                    not attachments[0][2].get("maxCaptionLength") or len(text) <= attachments[0][2]["maxCaptionLength"]
+                )
+            )
+            if text and not caption:
+                payloads.append({"text": text})
+            for index, (item, kind, _) in enumerate(attachments):
                 uploaded = await self._request(
                     "POST",
                     "/v1/assets/upload/base64",
@@ -304,7 +325,10 @@ class BeeperTransport:
                 )
                 if not uploaded.get("uploadID") or uploaded.get("error"):
                     raise RuntimeError("Beeper did not accept the attachment upload")
-                payloads.append({"attachment": {"uploadID": uploaded["uploadID"], "type": kind}})
+                payload = {"attachment": {"uploadID": uploaded["uploadID"], "type": kind}}
+                if index == 0 and caption:
+                    payload["text"] = text
+                payloads.append(payload)
             sent = []
             try:
                 for payload in payloads:
