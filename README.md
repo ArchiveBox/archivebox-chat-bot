@@ -2,54 +2,28 @@
 
 # 📚 ArchiveBox Chat Bot
 
-**Save links. Archive conversations. Put your archive to work.**
+**Your chats → your archive.**
 
-[![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml)
-[![MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE)
-![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
-
-**Beeper · Slack · Zulip · Telegram · WhatsApp · IRC · iMessage · Messenger**
+[![Checks](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml/badge.svg)](https://github.com/ArchiveBox/archivebox-chat-bot/actions/workflows/check.yml) [![MIT](https://img.shields.io/badge/license-MIT-47764d)](LICENSE) ![Self hosted](https://img.shields.io/badge/self_hosted-Docker_Compose-294e40)
 
 [ArchiveBox Bot](#-archivebox-bot) · [ArchiveBox AI Bot](#-archivebox-ai-bot) · [Setup](#connect-your-apps)
+
+[Slack](#slack) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper)
 
 </div>
 
 ## ↗ ArchiveBox Bot
 
-<table>
-<tr><th width="33%">💬 Mention in a thread</th><th width="33%">✉ Send a DM</th><th width="33%">▧ Browse saved snapshots</th></tr>
-<tr>
-<td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Real Slack research thread: mention ArchiveBox to capture the URLs in the previous message"></a></td>
-<td width="33%" valign="top"><a href="screenshots/slack-dm.jpg"><img src="screenshots/slack-dm.jpg" width="100%" alt="Real Slack DM: capture web replay and Python reference URLs"></a></td>
-<td width="33%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip saved snapshot with uploaded screenshot and favicon"></a></td>
-</tr>
-</table>
-
-- **@mention the bot** → archive URLs from the latest 10 messages and your mention.
-- **DM the bot** → archive the URLs you send.
-- **Post in New URLs** → archive every shared link.
-- **Open Saved URLs** → linked titles, original URLs, screenshots, 🌐, sizes, and personas.
-- **Enable a group** → automatically archive every link posted there.
-- **Choose permissions** → people, groups, commands, and bot preferences.
-- **Use several apps together** → one console, one Docker service, one ArchiveBox server.
-
-<details>
-<summary><b>Slack · Saved URLs</b></summary>
-
-<a href="screenshots/slack-saved.jpg"><img src="screenshots/slack-saved.jpg" width="900" alt="Real Slack Saved URLs cards with linked titles, screenshots, Saved file sizes, personas, and favicon links"></a>
-
-</details>
-
-<table>
-<tr><th width="33%">Telegram · saved references</th><th width="33%">WhatsApp · capture from a DM</th><th width="33%">IRC · saved URLs</th></tr>
-<tr>
-<td width="33%"><a href="screenshots/telegram-capture.jpg"><img src="screenshots/telegram-capture.jpg" width="100%" alt="Real Telegram group receiving RFC 9111 and Python URL parsing snapshots with Saved file sizes"></a></td>
-<td width="33%"><a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="100%" alt="Real WhatsApp Agent DM capturing cancellation references with saved screenshots"></a></td>
-<td width="33%"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC Saved URLs channel with Python asyncio references and archive links"></a></td>
-</tr>
-</table>
+- **@mention** → save URLs from your message + the latest 10 messages.
+- **DM / New URLs** → save every URL you send.
+- **Groups** → optionally archive every link shared there.
+- **Saved URLs** → linked title, screenshot, original URL, 🌐, **Saved 475 KB**, persona.
+- **Tags** → provider + sender + group: `slack,bob,accounting`; DMs omit the group.
 
 ### Connect your apps
+
+<details>
+<summary><b>🐳 Docker → ArchiveBox URL + API key → chat provider</b></summary>
 
 ```bash
 git clone https://github.com/ArchiveBox/archivebox-chat-bot.git
@@ -58,137 +32,218 @@ docker compose up -d --build
 docker compose exec archivebox-chat-bot cat /data/admin-password
 ```
 
-**[Open setup → localhost:8001](http://localhost:8001)**
+1. **[Open setup](http://localhost:8001)** → ArchiveBox server URL + API key.
+2. **Choose a provider below** → connect ArchiveBox Bot.
+3. **Pick conversations** → New URLs, Saved URLs, groups, permissions.
 
-1. **Connect ArchiveBox** — server URL + API key.
-2. **Choose a chat app** — connect its bot or pair its account.
-3. **Choose conversations** — New URLs, Saved URLs, and groups to archive.
+<a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Actual shared setup console with connected providers and a nonblocking localhost warning"></a>
 
-<a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Real setup console with connected chat providers, Beeper connection picker, and nonblocking localhost warning"></a>
-
-- **Personal access:** use [Tailscale](https://tailscale.com/kb/1153/enabling-https).
-- **Internet access:** use your own domain and HTTPS.
-- **Local testing:** `localhost` / `127.0.0.1` work; the console warns that chat links will not open on other devices. Set **Public URL** to the address your readers can reach.
-
-| App | Connect | Conversations |
-|---|---|---|
-| **Beeper** | Desktop/Server URL + API token → choose account and conversations | Shared connector for Beeper networks; selected chats only |
-| **Slack** | Preconfigured app → install → bot & app tokens | Channels, threads, DMs; creates New URLs / Saved URLs |
-| **Zulip** | Server URL + bot email + API key | Channels, topics, DMs; creates private New URLs / Saved URLs |
-| **Telegram** | BotFather token | Existing groups, topics, DMs; disable bot privacy for group-wide capture |
-| **WhatsApp** | Agent API key, or Linked Devices QR pairing | Agent key: creator DMs; paired account: groups and DMs |
-| **IRC** | Server + nickname; account login when required | Existing channels and private messages |
-| **iMessage** | Messages on a Mac with [imsg](https://github.com/openclaw/imsg) | Existing conversations; local Mac or SSH from Docker |
-| **Messenger** | Facebook Page credentials, or an existing [Matrix bridge](https://github.com/mautrix/meta) | Page conversations; personal groups through Matrix |
-
-### Beeper
-
-1. Connect your networks in **Beeper Desktop** or **Beeper Server**.
-2. Choose **Beeper** in the console → enter its URL and API access token.
-3. Click **Find my accounts** → choose the bot account and allowed conversations.
-
-<a href="screenshots/beeper-setup.png"><img src="screenshots/beeper-setup.png" width="640" alt="Real Beeper setup screen querying the running Docker Beeper Server and showing its sign-in requirement"></a>
-
-- One transport for Beeper's connected networks; same capture settings and permissions.
-- Only selected conversations are read; separate bot identities require separate network accounts.
-- [Official headless server setup](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli); iMessage still needs a Mac.
-- Beeper runs separately; its server binary is not bundled in this image.
-- **Verified:** real macOS and Docker server startup, API discovery, sign-in requirement.
-- **Pending:** signed-in message, reaction, media, group, and AI acceptance.
-
-<details>
-<summary><b>Live verification by provider</b></summary>
-
-| Provider | Verified | Still needed |
-|---|---|---|
-| Slack | Mentions, DMs, saved cards, multi-step AI | Marketplace approval |
-| Zulip | Topics, DMs, reactions, uploaded snapshot cards | Multi-step AI screenshot |
-| Telegram | Human DMs/group mentions, images, reactions, multi-step AI | — |
-| WhatsApp Agent | Real URLs captured and screenshots delivered | Multi-step AI completion; paired-account groups |
-| IRC | SASL, contextual capture, saved URLs, multi-step AI | — |
-| iMessage | Real Messages send, history/watch, self-message filtering | Independent sender capture and AI |
-| Messenger | Dedicated app, Page, credentials | Live webhook capture and AI |
-| Beeper | Actual Desktop/Server API readiness in macOS and Docker | Authenticated account tests |
+- **Reachable links:** [Tailscale](https://tailscale.com/kb/1153/enabling-https) for personal use; a domain + HTTPS for internet access.
+- **Localhost / 127.0.0.1:** allowed with a warning; set **Public URL** so links work on other devices.
 
 </details>
 
-### Provider setup
+### Providers
+
+#### Slack
+
+- **Connect:** create the preconfigured app → install → paste bot + app tokens.
+- **Use:** invite the bot to channels; mention it in a thread or send a DM.
+- **Destinations:** create **New URLs + Saved URLs** in the console. Socket Mode needs no public webhook.
 
 <table>
-<tr><th width="33%">Telegram · create your bots</th><th width="33%">Telegram · add them to a group</th><th width="33%">iMessage · connect Messages</th></tr>
+<tr><th width="33%">1 · Set up the Slack app</th><th width="33%">2 · Configure the bot</th><th width="33%">3 · Mention in a thread</th></tr>
 <tr>
-<td width="33%" valign="top"><a href="screenshots/telegram-setup.jpg"><img src="screenshots/telegram-setup.jpg" width="100%" alt="Actual BotFather setup: ArchiveBox Bot and ArchiveBox AI Bot names and group privacy settings"></a></td>
-<td width="33%" valign="top"><a href="screenshots/telegram-group-config.jpg"><img src="screenshots/telegram-group-config.jpg" width="100%" alt="Actual private Telegram test group with both ArchiveBox bots installed"></a></td>
-<td width="33%" valign="top"><a href="screenshots/imessage-setup.png"><img src="screenshots/imessage-setup.png" width="100%" alt="Actual macOS permission allowing the local host to send through Messages"></a></td>
+<td width="33%" valign="top"><a href="screenshots/slack-setup.jpg"><img src="screenshots/slack-setup.jpg" width="100%" alt="Actual Slack App Home for ArchiveBox Bot"></a></td>
+<td width="33%" valign="top"><a href="screenshots/slack-config.png"><img src="screenshots/slack-config.png" width="100%" alt="Actual Slack bot settings and destination controls in the shared console"></a></td>
+<td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Real Slack mention saving links from the previous message with a completion reaction"></a></td>
 </tr>
 </table>
 
-
 <table>
-<tr><th width="33%">Slack · installed bot</th><th width="33%">WhatsApp · Agents</th><th width="33%">Messenger · dedicated Page</th></tr>
+<tr><th width="50%">Or send a DM</th><th width="50%">Browse Saved URLs</th></tr>
 <tr>
-<td width="33%"><a href="screenshots/slack-setup.jpg"><img src="screenshots/slack-setup.jpg" width="100%" alt="Real Slack app configuration for ArchiveBox Bot"></a></td>
-<td width="33%"><a href="screenshots/whatsapp-setup.jpg"><img src="screenshots/whatsapp-setup.jpg" width="100%" alt="Real WhatsApp Agents setup; agent creation uses the primary phone"></a></td>
-<td width="33%"><a href="screenshots/messenger-setup.jpg"><img src="screenshots/messenger-setup.jpg" width="100%" alt="Actual ArchiveBox Bot Facebook Page created for Messenger integration"></a></td>
-</tr>
-<tr><th>Telegram · bot preferences</th><th>IRC · connect a client</th><th>Shared console</th></tr>
-<tr>
-<td><a href="screenshots/telegram-config.png"><img src="screenshots/telegram-config.png" width="100%" alt="Actual Telegram connection preferences in the common web console"></a></td>
-<td><a href="screenshots/irc-setup.png"><img src="screenshots/irc-setup.png" width="100%" alt="Real IRC client setup using The Lounge"></a></td>
-<td><a href="screenshots/console.png"><img src="screenshots/console.png" width="100%" alt="Actual multi-provider setup console"></a></td>
+<td width="50%" valign="top"><a href="screenshots/slack-dm.jpg"><img src="screenshots/slack-dm.jpg" width="100%" alt="Real Slack DM saving web replay and Python references"></a></td>
+<td width="50%" valign="top"><a href="screenshots/slack-saved.jpg"><img src="screenshots/slack-saved.jpg" width="100%" alt="Real Slack saved snapshots with thumbnails, Saved sizes, personas, and favicon links"></a></td>
 </tr>
 </table>
+
+#### Zulip
+
+- **Connect:** create a generic bot → enter server URL, bot email, API key.
+- **Use:** topics, mentions, DMs; create private **New URLs + Saved URLs** channels.
+
+<table>
+<tr><th width="50%">1 · Connect & choose channels</th><th width="50%">2 · Browse Saved URLs</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/zulip-config.png"><img src="screenshots/zulip-config.png" width="100%" alt="Actual unconnected Zulip setup form with server, credentials, and destination controls"></a></td>
+<td width="50%" valign="top"><a href="screenshots/zulip.jpg"><img src="screenshots/zulip.jpg" width="100%" alt="Real Zulip snapshot card with uploaded screenshot and favicon"></a></td>
+</tr>
+</table>
+
+#### Telegram
+
+- **Connect:** [BotFather](https://t.me/BotFather) token → add to group → choose destinations.
+- **Use:** DMs, mentions, topics; disable bot privacy for group-wide capture.
+- **Commands:** `/save`, `/search`, `/auto`, `/status`, `/help`; polling needs no public webhook.
+
+<table>
+<tr><th width="33%">1 · Add to your group</th><th width="33%">2 · Choose bot preferences</th><th width="33%">3 · Save references</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/telegram-group-config.jpg"><img src="screenshots/telegram-group-config.jpg" width="100%" alt="Actual Telegram group with the ArchiveBox bots added"></a></td>
+<td width="33%" valign="top"><a href="screenshots/telegram-config.png"><img src="screenshots/telegram-config.png" width="100%" alt="Actual Telegram capture preferences and saved destination"></a></td>
+<td width="33%" valign="top"><a href="screenshots/telegram-capture.jpg"><img src="screenshots/telegram-capture.jpg" width="100%" alt="Real Telegram group receiving RFC 9111 and Python snapshots with Saved sizes"></a></td>
+</tr>
+</table>
+
+<details>
+<summary><b>BotFather · names & group privacy</b></summary>
+
+<a href="screenshots/telegram-setup.jpg"><img src="screenshots/telegram-setup.jpg" width="480" alt="Actual BotFather conversation setting the two bot names and disabling group privacy"></a>
+
+</details>
+
+#### WhatsApp
+
+- **Connect:** Agent API key for creator DMs, or **Linked Devices** QR pairing for an account.
+- **Use:** send URLs in a DM; linked accounts also support groups.
+- **Live evidence:** Agent DM capture ✅ · linked-account groups pending.
+
+<table>
+<tr><th width="33%">1 · Set up an agent</th><th width="33%">2 · Connect WhatsApp</th><th width="33%">3 · Save from a DM</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/whatsapp-setup.jpg"><img src="screenshots/whatsapp-setup.jpg" width="100%" alt="Actual WhatsApp Agents setup requiring the primary phone for creation"></a></td>
+<td width="33%" valign="top"><a href="screenshots/whatsapp-config.png"><img src="screenshots/whatsapp-config.png" width="100%" alt="Actual WhatsApp Agent capture settings, currently disabled"></a></td>
+<td width="33%" valign="top"><a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="100%" alt="Real WhatsApp Agent DM with captured cancellation references and screenshots"></a></td>
+</tr>
+</table>
+
+#### IRC
+
+- **Connect:** server + nickname + channels; TLS/SASL settings when required.
+- **Use:** mentions, private messages, auto-archive channels; saved cards use text links.
+
+<table>
+<tr><th width="50%">1 · Configure the bot</th><th width="50%">2 · Browse Saved URLs</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/irc-config.png"><img src="screenshots/irc-config.png" width="100%" alt="Actual IRC bot connection preferences in the shared console"></a></td>
+<td width="50%" valign="top"><a href="screenshots/irc-capture.png"><img src="screenshots/irc-capture.png" width="100%" alt="Real IRC channel with archived Python asyncio references"></a></td>
+</tr>
+</table>
+
+#### iMessage
+
+- **Connect:** Mac + Messages + [imsg](https://github.com/openclaw/imsg); allow Full Disk Access and Messages Automation.
+- **Use:** existing conversations; local Mac or Docker → SSH.
+- **Live evidence:** send/history/watch ✅ · incoming capture pending.
+
+<table>
+<tr><th width="50%">1 · Allow Messages access</th><th width="50%">2 · Connect the Mac</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/imessage-setup.png"><img src="screenshots/imessage-setup.png" width="100%" alt="Actual macOS permission prompt for Messages automation"></a></td>
+<td width="50%" valign="top"><a href="screenshots/imessage-config.png"><img src="screenshots/imessage-config.png" width="100%" alt="Actual unconnected iMessage setup form with SSH transport options"></a></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Docker → Mac prerequisites</b></summary>
+
+- SSH key + verified `known_hosts`, readable by container UID **1000**.
+- Set the Mac's absolute `imsg` path; Compose does not provision the Mac or SSH access.
+
+</details>
+
+#### Messenger
+
+- **Connect:** Facebook Page credentials + HTTPS message webhook; or an existing [Matrix bridge](https://github.com/mautrix/meta).
+- **Use:** Page conversations; personal groups through Matrix.
+- **Live evidence:** app/Page created ✅ · incoming capture pending.
+
+<table>
+<tr><th width="50%">1 · Create a Page</th><th width="50%">2 · Configure Messenger</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/messenger-setup.jpg"><img src="screenshots/messenger-setup.jpg" width="100%" alt="Actual dedicated ArchiveBox Bot Facebook Page"></a></td>
+<td width="50%" valign="top"><a href="screenshots/messenger-config.png"><img src="screenshots/messenger-config.png" width="100%" alt="Actual unconnected Messenger setup form with Page credentials and webhook verification"></a></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Meta webhook</b></summary>
+
+- Register `https://<console>/connections/<connection-id>/capture/webhook` with your matching verify token.
+- Subscribe the Page to message events; use `/ai/webhook` for ArchiveBox AI Bot.
+
+</details>
+
+#### Beeper
+
+- **Connect networks once:** [Beeper Desktop/Server](https://github.com/beeper/cli#2-local-beeper-server-self-hosted-managed-by-the-cli) → URL + API token → **Find my accounts**.
+- **Choose:** one network account + allowed conversations per bot; Beeper runs separately, iMessage still needs a Mac.
+- **Live evidence:** macOS/Docker readiness ✅ · signed-in chats, media, reactions pending.
+
+<table>
+<tr><th width="50%">1 · Configure Beeper</th><th width="50%">2 · Check the server</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/beeper-config.png"><img src="screenshots/beeper-config.png" width="100%" alt="Actual unconnected Beeper form with account and conversation selectors"></a></td>
+<td width="50%" valign="top"><a href="screenshots/beeper-setup.png"><img src="screenshots/beeper-setup.png" width="100%" alt="Actual running Docker Beeper Server reporting that sign-in is still required"></a></td>
+</tr>
+</table>
+
+<details>
+<summary><b>Docker → Beeper address</b></summary>
+
+- Host address: `http://host.docker.internal:<port>`; container `localhost` points at the bot itself.
+
+</details>
 
 ### Groups & commands
 
-- Invite **ArchiveBox Bot** into a group and send a message to discover it in the console.
-- Choose **Archive every link** for individual groups or all joined groups.
-- Select administrators by name in **Permissions** to let them change group settings from chat.
+- Invite the bot → send a message → select the group in the console.
+- Enable **Archive every link** per group or across joined groups; choose administrators under **Permissions**.
 
 | Command | Action |
 |---|---|
 | `/archivebox save <URLs>` | Capture links |
 | `/archivebox search <words>` | Find saved pages |
-| `/archivebox auto on` / `off` | Change this group’s automatic capture |
+| `/archivebox auto on` / `off` | Toggle this group's automatic capture |
 | `/archivebox status` | Check ArchiveBox |
 | `/archivebox help` | Show commands |
 
-- **Telegram:** `/save`, `/search`, `/auto`, `/status`, `/help` also work.
-- **Zulip:** DM a command or put it after a mention.
-- **IRC / iMessage:** `/archivebox …` in ordinary message text.
-- Captures use depth **0**, the selected persona, and separate **provider, sender, channel/group** tags: `slack,bob,accounting`. DMs omit the channel/group tag.
-- History comes from the provider where available; other providers retain the messages received while connected.
-- Reactions and media follow each provider’s capabilities. IRC and standard iMessage do not provide reliably targeted reactions; Messenger Pages have text replies.
+<details>
+<summary><b>Capture & provider details</b></summary>
+
+- Capture depth **0**, selected persona.
+- History: provider API where available, otherwise messages received while connected.
+- Zulip: commands in DMs or after a mention. IRC/iMessage: commands as ordinary message text.
+- Reactions/media depend on the provider; IRC/iMessage lack reliably targeted reactions, Messenger Pages use text replies.
+
+</details>
+
+### Administration
 
 <details>
-<summary><b>ArchiveBox & deployment options</b></summary>
+<summary><b>Deployment & updates</b></summary>
 
-- Start ArchiveBox alongside the bot: `docker compose --profile archivebox up -d --build`.
-- Docker network: `http://archivebox:5797`; server on host: `http://host.docker.internal:5797`.
-- Set **Public URL** to the ArchiveBox address people can open.
-- Standard split API/admin hostnames are discovered automatically; an internal admin override is available.
-- Slack Socket Mode and Telegram polling do not need a public webhook.
-- Facebook Pages, Telegram webhooks, and Slack OAuth need an HTTPS console URL.
-- Back up the **bridge_data** volume: settings, credentials, conversation history, and pending jobs.
-- Run one service per data volume. Update with `git pull --ff-only && docker compose up -d --build`.
+- Include ArchiveBox: `docker compose --profile archivebox up -d --build`.
+- ArchiveBox inside Compose: `http://archivebox:5797`; on the host: `http://host.docker.internal:5797`.
+- **Public URL** is the address readers open; split API/admin hosts are discovered automatically.
+- Back up **bridge_data**; run one service per data volume.
+- Update: `git pull --ff-only && docker compose up -d --build`.
 
 </details>
 
 <details>
-<summary><b>Activity, credentials & recovery</b></summary>
+<summary><b>Credentials & recovery</b></summary>
 
-- **Activity** links captures and agent sessions; **Recover answer** reads an existing task without repeating its captures. Uncertain message delivery requires review before retrying.
-- Jobs remain bound to their original server, connection, and bot identity.
-- The console requires authentication and CSRF protection. Tokens are redacted from its API.
-- Blank password fields preserve credentials. Protect the Docker volume and use HTTPS when exposing the console.
-- Change the console password in **Activity → Console password**.
-- Revoke provider credentials or disconnect the account to remove chat access.
-- Removing the bot’s volume does not delete ArchiveBox snapshots or chat messages.
+- **Activity** → jobs, sessions, **Recover answer**, console password.
+- Pending jobs retain their original server/connection; review uncertain delivery before retrying.
+- Blank credential fields preserve secrets. Protect the volume; use HTTPS for remote access.
+- Revoke credentials to remove access. Removing bot data preserves snapshots and chat messages.
 
 </details>
 
 <details>
-<summary><b>Development & real-service checks</b></summary>
+<summary><b>Development</b></summary>
 
 ```bash
 uv sync
@@ -198,68 +253,93 @@ uv run python -m pytest -xq tests/local
 uv run ruff check .
 ```
 
-- Python owns the shared capture/agent behavior, durable queue, permissions, and console.
-- [Beeper Client API](https://developers.beeper.com/desktop-api/) provides the shared Desktop/Server transport with durable message cursors and delivery confirmation.
-- [Chat SDK](https://chat-sdk.dev/docs) connects Telegram, WhatsApp, and Messenger in a supervised Node subprocess.
-- Native Slack/Zulip adapters preserve their thread, card, and agent features; IRC uses pydle; iMessage uses imsg.
-- Live tests use real services and persisted results. Credential schemas and environment variables are in `tests/test_*_live.py`.
-- Screenshots show actual conversations and captures; no simulated bot messages.
+- Python: shared capture/agent engine, queue, permissions, console.
+- Transports: [Beeper API](https://developers.beeper.com/desktop-api/), [Chat SDK](https://chat-sdk.dev/docs), Slack/Zulip APIs, pydle, imsg.
+- Live tests: `tests/test_*_live.py`. Real screenshots; pending evidence marked per provider.
 
 </details>
 
 ## ✧ ArchiveBox AI Bot
 
-<table>
-<tr><th width="33%">Slack · HTTP caching collection</th><th width="33%">Telegram · capture, tag, verify</th><th width="33%">IRC · research saved references</th></tr>
-<tr>
-<td width="33%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="Real Slack AI plan, approval, capture, tagging and verification"></a></td>
-<td width="33%" valign="top"><a href="screenshots/telegram-ai.jpg"><img src="screenshots/telegram-ai.jpg" width="100%" alt="Real Telegram AI task capturing RFC9110, tagging existing caching references and reporting six verified references"></a></td>
-<td width="33%" valign="top"><a href="screenshots/irc-ai.png"><img src="screenshots/irc-ai.png" width="100%" alt="Real IRC AI task capturing the missing asyncio Queue reference and explaining shutdown from its saved HTML"></a></td>
-</tr>
-</table>
-
-- **DM or @mention the AI bot** → research, capture, organize, and verify your archive.
-- **Follow up in the conversation** → include the recent messages and previous replies.
-- **Open ArchiveBox → Agent** → inspect each task’s persisted session and tool results.
-- **Use your existing OpenCode setup** → providers, credentials, tools, and session database.
-- **Choose trusted people** → control who can start agent tasks.
-- **Long-running tasks** → results are tracked in the existing session and survive bot restarts.
+- **DM / @mention** → research, capture, tag, organize, and verify.
+- **Follow up** → include recent messages and previous replies.
+- **ArchiveBox → Agent** → inspect each new session and tool results.
+- **Existing OpenCode** → providers, credentials, tools, session database; tasks survive restarts.
 
 ### Connect the AI bot
 
-1. Open **ArchiveBox AI Bot** in the console.
-2. Choose a provider and connect its **second bot/account**.
-3. Select **Trusted people** and enable it.
+1. **ArchiveBox AI Bot** in the console → connect a second bot/account.
+2. **Trusted people** → choose who can run tasks.
+3. **Agent preferences** → optional prompt → enable.
 
-| Provider | AI connection |
-|---|---|
-| **Beeper** | Same Beeper server; select a second network account and its allowed conversations |
-| **Slack** | Second preconfigured app; native agent interface, status, and Stop |
-| **Zulip** | Second bot email + API key |
-| **Telegram** | Second BotFather token |
-| **WhatsApp** | Separate agent API key or second linked account |
-| **IRC** | Second nickname/account |
-| **iMessage** | Separate Mac/account for distinct bot identities |
-| **Messenger** | Second Page or Matrix account |
+### AI providers
 
-<a href="screenshots/slack-ai-config.jpg"><img src="screenshots/slack-ai-config.jpg" width="640" alt="Actual Slack configuration for ArchiveBox AI Bot"></a>
+#### Slack AI
 
-- Every invocation starts a titled session in the existing ArchiveBox collection directory.
-- **Agent preferences** customize the prompt; trusted users can exercise the configured agent’s tools.
-- AI replies and sessions stay separate from the ArchiveBox Bot’s capture workflow.
+- **Connect:** second preconfigured Slack app; native agent status and Stop controls.
+- **Shown:** plan → approval → capture HTTP caching references → tag and verify.
+
+<table>
+<tr><th width="50%">1 · Configure ArchiveBox AI Bot</th><th width="50%">2 · Complete a research task</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/slack-ai-config.jpg"><img src="screenshots/slack-ai-config.jpg" width="100%" alt="Actual Slack App Home for ArchiveBox AI Bot"></a></td>
+<td width="50%" valign="top"><a href="screenshots/slack-ai-task.jpg"><img src="screenshots/slack-ai-task.jpg" width="100%" alt="Real Slack AI conversation planning, capturing, tagging, and verifying HTTP caching references"></a></td>
+</tr>
+</table>
+
+#### Telegram AI
+
+- **Connect:** second BotFather token; add ArchiveBox AI Bot to the group.
+- **Shown:** capture RFC 9110 → tag existing caching references → verify six sources.
+
+<table>
+<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Capture, tag & verify</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/telegram-ai-config.png"><img src="screenshots/telegram-ai-config.png" width="100%" alt="Actual Telegram AI bot connection and trusted people settings"></a></td>
+<td width="50%" valign="top"><a href="screenshots/telegram-ai.jpg"><img src="screenshots/telegram-ai.jpg" width="100%" alt="Real Telegram AI task capturing RFC 9110 and verifying six caching references"></a></td>
+</tr>
+</table>
+
+#### IRC AI
+
+- **Connect:** second nickname/account on the same server.
+- **Shown:** find a missing asyncio reference → capture it → answer from saved HTML.
+
+<table>
+<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Research archived sources</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/irc-ai-config.png"><img src="screenshots/irc-ai-config.png" width="100%" alt="Actual IRC AI bot configuration and trusted people settings"></a></td>
+<td width="50%" valign="top"><a href="screenshots/irc-ai.png"><img src="screenshots/irc-ai.png" width="100%" alt="Real IRC AI task capturing Queue documentation and explaining shutdown from saved HTML"></a></td>
+</tr>
+</table>
+
+#### WhatsApp AI
+
+- **Connect:** separate Agent API key or linked account; choose trusted people.
+- **Shown:** inspect existing archives → identify a missing Fetch reference → propose capture/tagging. Execution pending.
+
+<table>
+<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Review the proposed plan</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/whatsapp-ai-config.png"><img src="screenshots/whatsapp-ai-config.png" width="100%" alt="Actual connected WhatsApp AI bot with a trusted user selected"></a></td>
+<td width="50%" valign="top"><a href="screenshots/whatsapp-ai-plan.jpg"><img src="screenshots/whatsapp-ai-plan.jpg" width="100%" alt="Real WhatsApp AI inventory and proposed capture plan awaiting approval, not a completed capture task"></a></td>
+</tr>
+</table>
+
+#### Other AI providers
+
+| Provider | Second identity | Live task evidence |
+|---|---|---|
+| [Zulip](#zulip) | Generic bot email + API key | Multi-step capture pending |
+| [iMessage](#imessage) | Separate Mac/account | Incoming task pending |
+| [Messenger](#messenger) | Page or Matrix account | Incoming task pending |
+| [Beeper](#beeper) | Second network account + allowed conversations | Signed-in task pending |
 
 <details>
 <summary><b>Slack AgentExchange & Apps marketplace</b></summary>
 
-| Distribution | Status |
-|---|---|
-| Self-hosted Slack apps | Socket Mode supported |
-| HTTPS Events + OAuth | Implemented for your own public endpoint and Slack app |
-| Public AgentExchange / Apps listing | **Not submitted or approved** |
-
-- [Slack requires 10+ active workspaces during review](https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/).
-- [Marketplace apps require HTTPS events instead of Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode/).
-- Public submission also needs support/privacy URLs, reviewer access, and approval from Slack.
-- Native Slack agent support does not publish a marketplace listing automatically.
+- **Not submitted or approved.** Self-hosted apps work independently of marketplace listing.
+- Review requires [10+ active workspaces](https://docs.slack.dev/changelog/2026/09/01/slack-marketplace-install-requirement/), [HTTPS events rather than Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode/), support/privacy URLs, and reviewer access.
+- HTTPS Events + OAuth are implemented for your own public endpoint and Slack app.
 
 </details>
