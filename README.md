@@ -219,6 +219,16 @@ docker compose up -d
 
 <a href="screenshots/whatsapp-capture.jpg"><img src="screenshots/whatsapp-capture.jpg" width="900" alt="Real WhatsApp Agent DM with captured cancellation references and screenshots"></a>
 
+<p><strong>Live Cabbage check (2026-10-08):</strong> A real WhatsApp Agent DM used <code>/archivebox save</code> with two Ars Technica URLs. The DM confirmed the request, and the Cabbage console recorded two saved URLs and a completed message. Both snapshots contain Ars Technica's HTTP <code>403 Forbidden</code> response, not article content.</p>
+
+<table>
+<tr><th width="50%">Real WhatsApp DM</th><th width="50%">Cabbage saved result</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/whatsapp-e2e-cabbage.jpg"><img src="screenshots/whatsapp-e2e-cabbage.jpg" width="100%" alt="Actual WhatsApp Agent DM with the two URL capture command and queued response"></a></td>
+<td width="50%" valign="top"><a href="screenshots/whatsapp-saved-cabbage.jpg"><img src="screenshots/whatsapp-saved-cabbage.jpg" width="100%" alt="Cabbage console showing two URLs saved and the WhatsApp message completed"></a></td>
+</tr>
+</table>
+
 ---
 
 <img src="https://libera.chat/static/img/libera-color.svg" align="right" width="80" style="float: right; width: 80px;" alt="Libera.Chat IRC logo">
@@ -236,13 +246,14 @@ docker compose up -d
 </tr>
 </table>
 
-<p><strong>Live Cabbage check (2026-10-08):</strong> In the signed-in Lounge UI, <code>ArchiveBoxTester</code> mentioned <code>ArchiveBoxCapture</code> in <code>#new-urls</code> and posted two Ars Technica URLs. The URL messages triggered separate captures; the October snapshot completed with title <code>403 Forbidden</code>, while the April crawl was still queued during this check. The bot's saved-channel card links to the replay and source URL, but the captured article content is blocked.</p>
+<p><strong>Live Cabbage check (2026-10-08):</strong> In the signed-in Lounge UI, <code>ArchiveBoxTester</code> mentioned <code>ArchiveBoxCapture</code> in <code>#new-urls</code>, sent the same two Ars Technica URLs in a capture-bot DM, and mentioned <code>ArchiveBoxAI</code> in <code>#archivebox-ai</code>. The channel URL messages triggered separate captures; the October snapshot completed with title <code>403 Forbidden</code>, while the April channel crawl and two-URL DM capture remained queued. The saved-channel card links to the replay and source URL, but captured article content is blocked. The AI bot was configured through the console at <code>ergo:6667</code> (plain IRC, no TLS), after its old <code>127.0.0.1:16667</code> endpoint failed. The AI request completed and created snapshots <code>06ac76358bae7ed78000c4cfe72049be</code> and <code>06ac76358baf7cb88000cdb323aa1f0e</code>, both HTTP <code>403</code>. Because <code>ONLY_NEW</code> skipped the already-existing URLs, the AI used the normal CLI's <code>--no-only-new</code> option for this new capture; this produced fresh snapshots, not article content.</p>
 
 <table>
-<tr><th width="50%">Real IRC submission</th><th width="50%">Saved snapshot result</th></tr>
+<tr><th width="33%">Channel mention</th><th width="33%">Capture-bot DM</th><th width="34%">Saved snapshot result</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/irc-new-urls-cabbage.jpg"><img src="screenshots/irc-new-urls-cabbage.jpg" width="100%" alt="Real Lounge UI mention and two Ars Technica URL messages in the IRC capture channel"></a></td>
-<td width="50%" valign="top"><a href="screenshots/irc-saved-urls-cabbage.jpg"><img src="screenshots/irc-saved-urls-cabbage.jpg" width="100%" alt="IRC saved channel cards for Ars Technica captures, visibly showing 403 Forbidden and replay links"></a></td>
+<td width="33%" valign="top"><a href="screenshots/irc-new-urls-cabbage.jpg"><img src="screenshots/irc-new-urls-cabbage.jpg" width="100%" alt="Real Lounge UI mention and two Ars Technica URL messages in the IRC capture channel"></a></td>
+<td width="33%" valign="top"><a href="screenshots/irc-capture-bot-dm-cabbage.jpg"><img src="screenshots/irc-capture-bot-dm-cabbage.jpg" width="100%" alt="Real Lounge UI capture-bot DM with both Ars Technica URLs"></a></td>
+<td width="34%" valign="top"><a href="screenshots/irc-saved-urls-cabbage.jpg"><img src="screenshots/irc-saved-urls-cabbage.jpg" width="100%" alt="IRC saved channel cards for Ars Technica captures, visibly showing 403 Forbidden and replay links"></a></td>
 </tr>
 </table>
 
@@ -296,6 +307,16 @@ docker compose up -d
 
 </details>
 
+<p><strong>Live Cabbage check (2026-10-08):</strong> A real Facebook Messenger Page conversation sent two Ars Technica URLs to the connected ArchiveBox Bot Page. The webhook returned HTTP <code>200</code>, and Cabbage recorded two saved URLs and a completed capture. Ars Technica returned HTTP <code>403 Forbidden</code> for both snapshots, so they contain the error response rather than article content.</p>
+
+<table>
+<tr><th width="50%">Real Messenger conversation</th><th width="50%">Cabbage saved result</th></tr>
+<tr>
+<td width="50%" valign="top"><a href="screenshots/messenger-e2e-cabbage.jpg"><img src="screenshots/messenger-e2e-cabbage.jpg" width="100%" alt="Actual Facebook Messenger Page conversation showing the sent Ars Technica link"></a></td>
+<td width="50%" valign="top"><a href="screenshots/messenger-saved-cabbage.jpg"><img src="screenshots/messenger-saved-cabbage.jpg" width="100%" alt="Cabbage console showing the connected Messenger Page, two saved URLs, and completed capture"></a></td>
+</tr>
+</table>
+
 ---
 
 <img src="https://www.beeper.com/wp-content/uploads/2026/05/beeper-favicon.png" align="right" width="80" style="float: right; width: 80px;" alt="Beeper logo">
@@ -316,11 +337,13 @@ docker compose up -d
 
 #### ✉️ Email
 
-- **Connect:** dedicated mailbox → IMAP server + address + app password → **Save & connect**.
+- **Connect:** dedicated mailbox → IMAP server + address + app password → **Save & connect**. [AgentMail](https://docs.agentmail.to/agent-onboarding) can create an unclaimed, receive-only inbox; use `imap.agentmail.to`, port `993`, TLS, the inbox address, and its API key as the password.
 - **Send / forward / CC** → save links from the subject, body, quoted conversation, and text/HTML/`.eml` attachments.
 - **Tags:** `email` + sender's name · **Results:** ArchiveBox + **Activity**.
 - **Inbox:** checked every 30 seconds; new mail only by default. Optional first-connection import of existing mail.
 - **Inbound only:** no SMTP or replies; preserves read/unread flags. PDF, Office, and image attachments are not inspected or uploaded.
+
+<img src="screenshots/email-agentmail-connected-cabbage.jpg" width="100%" alt="Cabbage Chatbot Admin Console showing the connected AgentMail IMAP inbox with the password retained securely">
 
 [Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
 
@@ -497,6 +520,15 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 <tr>
 <td width="50%" valign="top"><a href="screenshots/irc-ai-config.png"><img src="screenshots/irc-ai-config.png" width="100%" alt="Actual IRC AI bot configuration and trusted people settings"></a></td>
 <td width="50%" valign="top"><a href="screenshots/irc-ai.png"><img src="screenshots/irc-ai.png" width="100%" alt="Real IRC AI task capturing Queue documentation and explaining shutdown from saved HTML"></a></td>
+</tr>
+</table>
+
+<table>
+<tr><th width="33%">IRC AI connection after host correction</th><th width="33%">Real Ars request</th><th width="34%">AI result</th></tr>
+<tr>
+<td width="33%" valign="top"><a href="screenshots/irc-ai-connected-settings-cabbage.jpg"><img src="screenshots/irc-ai-connected-settings-cabbage.jpg" width="100%" alt="IRC AI bot connected through the admin UI at ergo port 6667 with TLS disabled"></a></td>
+<td width="33%" valign="top"><a href="screenshots/irc-ai-request-cabbage.jpg"><img src="screenshots/irc-ai-request-cabbage.jpg" width="100%" alt="Real Lounge UI request mentioning ArchiveBoxAI with two Ars Technica URLs"></a></td>
+<td width="34%" valign="top"><a href="screenshots/irc-ai-reply-cabbage.jpg"><img src="screenshots/irc-ai-reply-cabbage.jpg" width="100%" alt="IRC AI reply naming two real snapshots and reporting Ars Technica returned HTTP 403"></a></td>
 </tr>
 </table>
 

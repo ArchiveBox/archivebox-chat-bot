@@ -164,7 +164,10 @@ class EmailTransport:
             for uid in uids:
                 status, metadata = client.uid("fetch", str(uid), "(RFC822.SIZE)")
                 if status != "OK":
-                    raise ValueError("IMAP could not read message size")
+                    if self._uid_exists(client, uid):
+                        raise ValueError(f"IMAP returned an incomplete size response for message UID {uid}")
+                    batch.append((uid, None))
+                    continue
                 size = next(
                     (
                         int(m[1])
@@ -174,7 +177,11 @@ class EmailTransport:
                     None,
                 )
                 if size is None:
-                    # Message was expunged between SEARCH and FETCH.
+                    # A UID can disappear between SEARCH and FETCH. Preserve the cursor
+                    # when the server still lists it; some servers return partial FETCH
+                    # responses while a new message is being made available.
+                    if self._uid_exists(client, uid):
+                        raise ValueError(f"IMAP returned no size for message UID {uid}")
                     batch.append((uid, None))
                     continue
                 if size > self.max_bytes:
@@ -187,8 +194,16 @@ class EmailTransport:
                     break
                 status, body = client.uid("fetch", str(uid), "(BODY.PEEK[])")
                 if status != "OK":
-                    raise ValueError("IMAP could not read a new message")
+                    if self._uid_exists(client, uid):
+                        raise ValueError(f"IMAP returned an incomplete body response for message UID {uid}")
+                    batch.append((uid, None))
+                    continue
                 raw = next((row[1] for row in body if isinstance(row, tuple)), None)
+                if not raw:
+                    if self._uid_exists(client, uid):
+                        raise ValueError(f"IMAP returned no body for message UID {uid}")
+                    batch.append((uid, None))
+                    continue
                 batch.append((uid, raw))
                 total += size
             return state, batch
@@ -207,11 +222,19 @@ class EmailTransport:
                 with contextlib.suppress(imaplib.IMAP4.error, OSError):
                     client.logout()
 
+    @staticmethod
+    def _uid_exists(client, uid):
+        status, rows = client.uid("search", None, "UID", str(uid))
+        if status != "OK":
+            raise ValueError(f"IMAP could not verify whether message UID {uid} still exists")
+        return any(int(value) == uid for value in rows[0].split())
+
     async def check(self):
         if not self.initialized:
             self.state, _ = await asyncio.to_thread(self._read, True)
             self._save()
             self.initialized = True
+            log.info("Email inbox ready at UID %s", self.state["last_uid"])
         return {
             "id": self.identity,
             "name": self.username,
@@ -230,7 +253,11 @@ class EmailTransport:
             self._save()
             for uid, raw in batch:
                 if raw:
+                    log.info("Email received UID %s (%s bytes)", uid, len(raw))
                     await self.emit(email_message(raw, self.folder))
+                    log.info("Email UID %s accepted by the message handler", uid)
+                else:
+                    log.info("Email UID %s was expunged before retrieval", uid)
                 # Advance only after the shared engine durably accepts or filters this message.
                 self.state["last_uid"] = uid
                 self._save()
