@@ -45,7 +45,8 @@ docker compose up -d
 
 <a href="screenshots/first-run.jpg"><img src="screenshots/first-run.jpg" width="320" alt="First-run Chatbot Admin Console password setup"></a>
 
-<a href="screenshots/console.png"><img src="screenshots/console.png" width="900" alt="Chatbot Admin Console with connected providers and a nonblocking localhost warning"></a>
+<a href="screenshots/console-cabbage-connections.jpg"><img src="screenshots/console-cabbage-connections.jpg" width="900" alt="Live Chatbot Admin Console connection cards with saved URL counts, activity logs, and server latency"></a>
+<a href="screenshots/console-cabbage-settings.jpg"><img src="screenshots/console-cabbage-settings.jpg" width="900" alt="Chatbot Admin Console settings"></a>
 
 - **Reachable links:** [Tailscale](https://tailscale.com/kb/1153/enabling-https) for personal use; a domain + HTTPS for internet access.
 - **Localhost / 127.0.0.1:** allowed with a warning; set **Public URL** so links work on other devices.
@@ -68,7 +69,7 @@ docker compose up -d
 <tr><th width="33%">1 · Set up the Slack app</th><th width="33%">2 · Configure the bot</th><th width="33%">3 · Mention in a thread</th></tr>
 <tr>
 <td width="33%" valign="top"><a href="screenshots/slack-setup.jpg"><img src="screenshots/slack-setup.jpg" width="100%" alt="Actual Slack App Home for ArchiveBox Bot"></a></td>
-<td width="33%" valign="top"><a href="screenshots/slack-onboarding.jpg"><img src="screenshots/slack-onboarding.jpg" width="100%" alt="Connected Slack bot with three guided setup steps, token screenshots, and automatic channel setup"></a></td>
+<td width="33%" valign="top"><a href="screenshots/console-cabbage-slack-capture.jpg"><img src="screenshots/console-cabbage-slack-capture.jpg" width="100%" alt="Connected Slack bot with three guided setup steps, token screenshots, and automatic channel setup"></a></td>
 <td width="33%" valign="top"><a href="screenshots/slack-thread.jpg"><img src="screenshots/slack-thread.jpg" width="100%" alt="Real Slack mention saving links from the previous message with a completion reaction"></a></td>
 </tr>
 </table>
@@ -170,7 +171,7 @@ docker compose up -d
 <tr><th width="33%">1 · Add to your group</th><th width="33%">2 · Choose bot preferences</th><th width="33%">3 · Save references</th></tr>
 <tr>
 <td width="33%" valign="top"><a href="screenshots/telegram-group-config.jpg"><img src="screenshots/telegram-group-config.jpg" width="100%" alt="Actual Telegram group with the ArchiveBox bots added"></a></td>
-<td width="33%" valign="top"><a href="screenshots/telegram-config.png"><img src="screenshots/telegram-config.png" width="100%" alt="Actual Telegram capture preferences and saved destination"></a></td>
+<td width="33%" valign="top"><a href="screenshots/console-cabbage-telegram-capture.jpg"><img src="screenshots/console-cabbage-telegram-capture.jpg" width="100%" alt="Actual Telegram capture preferences and saved destination"></a></td>
 <td width="33%" valign="top"><a href="screenshots/telegram-capture.jpg"><img src="screenshots/telegram-capture.jpg" width="100%" alt="Real Telegram group receiving RFC 9111 and Python snapshots with Saved sizes"></a></td>
 </tr>
 </table>
@@ -439,13 +440,13 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 #### Telegram AI
 
 - **Connect:** second BotFather token; add ArchiveBox AI Bot to the group.
-- **Shown:** capture RFC 9110 → tag existing caching references → verify six sources.
+- **Shown:** a real Telegram DM asks the Cabbage server for its collection path and snapshot count; OpenCode runs the ArchiveBox command and replies in Telegram.
 
 <table>
-<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Capture, tag & verify</th></tr>
+<tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Query the live collection</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/telegram-ai-config.png"><img src="screenshots/telegram-ai-config.png" width="100%" alt="Actual Telegram AI bot connection and trusted people settings"></a></td>
-<td width="50%" valign="top"><a href="screenshots/telegram-ai.jpg"><img src="screenshots/telegram-ai.jpg" width="100%" alt="Real Telegram AI task capturing RFC 9110 and verifying six caching references"></a></td>
+<td width="50%" valign="top"><a href="screenshots/console-cabbage-telegram-ai.jpg"><img src="screenshots/console-cabbage-telegram-ai.jpg" width="100%" alt="Actual Telegram AI bot connection and trusted people settings"></a></td>
+<td width="50%" valign="top"><a href="screenshots/telegram-ai-cabbage.jpg"><img src="screenshots/telegram-ai-cabbage.jpg" width="100%" alt="Real Telegram AI reply confirming the Cabbage collection path and 38992 snapshots"></a></td>
 </tr>
 </table>
 
@@ -478,7 +479,7 @@ Applies to **ArchiveBox Bot** and **ArchiveBox AI Bot**. Updated **2026-10-08**.
 <table>
 <tr><th width="50%">1 · Connect the AI bot</th><th width="50%">2 · Review the proposed plan</th></tr>
 <tr>
-<td width="50%" valign="top"><a href="screenshots/whatsapp-ai-config.png"><img src="screenshots/whatsapp-ai-config.png" width="100%" alt="Actual connected WhatsApp AI bot with a trusted user selected"></a></td>
+<td width="50%" valign="top"><a href="screenshots/console-cabbage-whatsapp-ai.jpg"><img src="screenshots/console-cabbage-whatsapp-ai.jpg" width="100%" alt="Actual connected WhatsApp AI bot with a trusted user selected"></a></td>
 <td width="50%" valign="top"><a href="screenshots/whatsapp-ai-plan.jpg"><img src="screenshots/whatsapp-ai-plan.jpg" width="100%" alt="Real WhatsApp AI inventory and proposed capture plan awaiting approval, not a completed capture task"></a></td>
 </tr>
 </table>
