@@ -362,8 +362,6 @@ docker compose up -d
 
 <img src="screenshots/email-agentmail-connected-cabbage.jpg" width="100%" alt="Cabbage Chatbot Admin Console showing the connected AgentMail IMAP inbox with the password retained securely">
 
-<img src="screenshots/email-agentmail-accepted-cabbage.jpg" width="100%" alt="Gmail showing Message sent after sending two Ars Technica links to the Cabbage AgentMail inbox">
-
 <img src="screenshots/email-agentmail-saved-cabbage.jpg" width="100%" alt="Cabbage console showing the connected AgentMail inbox and four URLs saved">
 
 [Google app passwords](https://support.google.com/accounts/answer/185833) · [Gmail IMAP](https://support.google.com/mail/answer/7126229) · [iCloud IMAP](https://support.apple.com/en-us/102525) · [Fastmail IMAP](https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports)
