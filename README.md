@@ -8,7 +8,7 @@
 
 [ArchiveBox Bot](#archivebox-bot) · [ArchiveBox AI Bot](#archivebox-ai-bot) · [Setup](#connect-your-chat-apps)
 
-[Slack](#slack) · [Discord](#discord) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Beeper](#beeper) · [Email](#email)
+[Slack](#slack) · [Discord](#discord) · [Zulip](#zulip) · [Telegram](#telegram) · [WhatsApp](#whatsapp) · [IRC](#irc) · [iMessage](#imessage) · [Messenger](#messenger) · [Signal](#beeper) · [Beeper](#beeper) · [Email](#email)
 
 </div>
 
