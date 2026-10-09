@@ -10,3 +10,6 @@ __pycache__/
 *.sqlite3*
 /test-results/
 /dist/
+
+# Private email screenshot: never publish again.
+/screenshots/email-agentmail-accepted-cabbage.*
