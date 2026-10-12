@@ -59,6 +59,9 @@ class Store:
         """)
         if "scope" not in {row[1] for row in self.db.execute("PRAGMA table_info(jobs)")}:
             self.db.execute("ALTER TABLE jobs ADD COLUMN scope TEXT NOT NULL DEFAULT ''")
+        # Each engine polls one scope on the event loop. Index both filters so
+        # empty polls do not read every other account's persisted job payloads.
+        self.db.execute("CREATE INDEX IF NOT EXISTS jobs_scope_state ON jobs(scope,state,created_at)")
         if "received_at" not in {row[1] for row in self.db.execute("PRAGMA table_info(history)")}:
             self.db.execute("ALTER TABLE history ADD COLUMN received_at TEXT NOT NULL DEFAULT ''")
         self.db.execute("CREATE INDEX IF NOT EXISTS events_connection ON events(connection,id)")

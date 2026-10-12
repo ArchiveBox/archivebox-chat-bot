@@ -64,6 +64,50 @@ def test_durable_jobs_stay_bound_to_their_original_connection(tmp_path):
     store.close()
 
 
+def test_scoped_job_polling_does_not_scan_other_accounts(tmp_path):
+    store = Store(tmp_path)
+    for index in range(2000):
+        key = f"other-account:{index}"
+        store.enqueue(key, "message", {"text": "persisted conversation " * 200}, scope="other-account")
+        store.update(key, "uncertain")
+    for index in range(3):
+        key = f"active-account:{index}"
+        store.enqueue(key, "message", {"text": f"message {index}"}, scope="active-account")
+        store.update(key, "uncertain", {"session": f"session-{index}"})
+    store.enqueue("active-account:queued", "message", {"text": "not uncertain"}, scope="active-account")
+    # Exercise opening an existing database that predates the scoped index.
+    store.db.execute("DROP INDEX IF EXISTS jobs_scope_state")
+    store.close()
+    store = Store(tmp_path)
+    try:
+        for scope, expected_ids in (
+            ("absent-account", []),
+            ("active-account", ["active-account:0", "active-account:1"]),
+        ):
+            steps = 0
+
+            def count_steps():
+                nonlocal steps
+                steps += 100
+                return 0
+
+            # Count real SQLite work, independent of cache warmth or CI speed:
+            # each engine's empty poll must not walk every other account's jobs.
+            store.db.set_progress_handler(count_steps, 100)
+            try:
+                jobs = store.jobs("uncertain", limit=2, scope=scope)
+            finally:
+                store.db.set_progress_handler(None, 0)
+            assert [job["id"] for job in jobs] == expected_ids
+            for index, job in enumerate(jobs):
+                assert job["payload"] == {"text": f"message {index}"}
+                assert job["result"] == {"session": f"session-{index}"}
+            print(f"scope={scope}: {steps} SQLite VM steps")
+            assert steps < 200, f"Scoped poll scanned unrelated jobs: {steps} SQLite VM steps"
+    finally:
+        store.close()
+
+
 def test_real_archived_svg_favicon_renders_as_png():
     import io
     from pathlib import Path
