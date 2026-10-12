@@ -1,0 +1,21 @@
+tests/local/test_data.py
+  s_abed0e561cd58d::t_eb025031dfd849 67-110
+archivebox_chat_bot/store.py
+  s_abed0e561cd58d::t_2044f914ab4414 62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "669c2afed3e2187b32b2487d92219f608609fd32",
+  "prompts": {},
+  "sessions": {
+    "s_abed0e561cd58d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12e04-1f08-7ea1-94df-2e240b481935",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
