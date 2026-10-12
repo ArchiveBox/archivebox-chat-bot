@@ -6,9 +6,11 @@ import json
 import logging
 import re
 from collections.abc import Awaitable, Callable
+from pathlib import PurePosixPath
 from urllib.parse import quote, urlsplit
 
 import httpx
+from PIL import UnidentifiedImageError
 
 from .config import Connection
 from .media import normalize_image
@@ -361,12 +363,16 @@ class Zulip:
         ]
         if self.settings.upload_images:
             for kind, artifact in media.items():
+                try:
+                    upload = (f"{kind}.png", normalize_image(artifact.data, kind), "image/png")
+                except UnidentifiedImageError:
+                    # The origin may serve an invalid image. Preserve the actual
+                    # archived bytes as an attachment instead of losing the card.
+                    upload = (PurePosixPath(urlsplit(artifact.url).path).name or kind, artifact.data, artifact.mimetype)
                 result = await self._api(
                     "POST",
                     "user_uploads",
-                    files={
-                        "filename": (f"{kind}.png", normalize_image(artifact.data, kind), "image/png"),
-                    },
+                    files={"filename": upload},
                 )
                 label = {"screenshot": "📷", "favicon": "🌐"}[kind]
                 content.append(f"[{label}]({_link(result['url'])})")

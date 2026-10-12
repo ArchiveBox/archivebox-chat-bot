@@ -18,7 +18,7 @@ from time import monotonic
 
 import httpx
 import pytest
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from archivebox_chat_bot.archivebox import ArchiveBox
 from archivebox_chat_bot.config import Account, Connection, Settings
@@ -201,7 +201,7 @@ async def test_real_archive_card_and_native_uploaded_images(credentials):
         assert str(card["sender_id"]) == identity["bot_id"]
         assert snapshot["url"] in card["content"] and detail_url in card["content"]
         assert size_label(snapshot["output_size"]) in card["content"]
-        assert snapshot["persona"] in card["content"]
+        assert (snapshot["persona"] or "Default") in card["content"]
         assert "\n" not in card["content"] and "\r" not in card["content"]
         uploaded = {
             {"📷": "screenshot", "🌐": "favicon"}[label]: path
@@ -232,6 +232,53 @@ async def test_real_archive_card_and_native_uploaded_images(credentials):
         assert "<a " in rendered["content"] and "/user_uploads/" in rendered["content"]
         assert snapshot["title"] in rendered["content"]
         assert rendered["content"].count('class="message_inline_image"') == 2
+    finally:
+        await archive.close()
+        await bot.close()
+
+
+async def test_real_archive_card_preserves_unrenderable_favicon(credentials):
+    """A faithfully archived corrupt source image must remain downloadable."""
+    settings = settings_for(credentials)
+    settings.archivebox_token = Path(os.environ["ARCHIVEBOX_TEST_TOKEN_FILE"]).read_text().strip()
+    archive, bot = ArchiveBox(settings), Zulip(settings.connections[0])
+    try:
+        await private_channels(bot)
+        snapshot_id = os.environ["ARCHIVEBOX_TEST_INVALID_IMAGE_SNAPSHOT_ID"]
+        snapshot = await archive._request(
+            "GET", f"/api/v1/core/snapshot/{snapshot_id}", params={"with_archiveresults": "true"}
+        )
+        media = {kind: await archive.artifact(snapshot, kind) for kind in ("screenshot", "favicon")}
+        assert all(media.values())
+        with pytest.raises(UnidentifiedImageError):
+            Image.open(io.BytesIO(media["favicon"].data))
+        detail_url = archive.detail_url(snapshot)
+        card_id = await bot.post_card(snapshot, detail_url, media, f"zulip-live-invalid-image:{snapshot['id']}")
+        card = await get_message(bot, card_id)
+        assert str(card["stream_id"]) == settings.connections[0].saved_channel
+        assert snapshot["url"] in card["content"] and detail_url in card["content"]
+        assert size_label(snapshot["output_size"]) in card["content"]
+        assert (snapshot["persona"] or "Default") in card["content"]
+        uploaded = dict(re.findall(r"\[([📷🌐])\]\(([^)]+)\)", card["content"]))
+        assert set(uploaded) == {"📷", "🌐"}
+        async with httpx.AsyncClient(
+            auth=(settings.connections[0].capture.options["email"], settings.connections[0].capture.options["api_key"]),
+            follow_redirects=True,
+        ) as client:
+            for label, path in uploaded.items():
+                assert path.startswith("/user_uploads/")
+                response = await client.get(settings.connections[0].options["url"] + path)
+                response.raise_for_status()
+                if label == "🌐":
+                    assert response.content == media["favicon"].data
+                else:
+                    with Image.open(io.BytesIO(response.content)) as image:
+                        assert image.format == "PNG" and image.mode == "RGBA"
+                        with Image.open(io.BytesIO(media["screenshot"].data)) as source:
+                            expected = source.convert("RGBA")
+                            expected.thumbnail((1200, 1200))
+                            assert image.size == expected.size
+                            assert image.tobytes() == expected.tobytes()
     finally:
         await archive.close()
         await bot.close()
