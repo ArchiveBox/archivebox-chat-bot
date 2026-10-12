@@ -401,6 +401,11 @@ class Store:
             {**dict(row), "payload": json.loads(row["payload"]), "result": json.loads(row["result"])} for row in rows
         ]
 
+    def has_job(self, key):
+        # Discovery only needs identity; avoid reading and decoding the full
+        # frozen capture manifests again for every overlapping poll.
+        return self.db.execute("SELECT 1 FROM jobs WHERE id=?", (key,)).fetchone() is not None
+
     def get(self, key):
         row = self.db.execute("SELECT * FROM jobs WHERE id=?", (key,)).fetchone()
         return (

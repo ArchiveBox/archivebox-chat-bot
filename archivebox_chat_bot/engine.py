@@ -6,6 +6,7 @@ import logging
 import time
 import uuid
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 import httpx
 from slack_sdk.errors import SlackApiError
@@ -608,11 +609,22 @@ class Engine:
                 modified_at__lt=upper,
                 limit=100,
                 offset=offset,
-                with_archiveresults="true",
             )
             for snapshot in page["items"]:
+                key = f"saved:{self.scope()}:{snapshot['id']}"
+                # Overlap polls revisit already queued/delivered captures. Fetch
+                # their potentially large manifests only for a new scoped job.
+                if self.store.has_job(key):
+                    continue
+                snapshot = await self.archive._request(
+                    "GET", f"/api/v1/core/snapshot/{quote(str(snapshot['id']), safe='')}"
+                )
+                # A capture can be reopened between the two reads. Its next
+                # sealing updates modified_at and makes it discoverable again.
+                if snapshot["status"] != "sealed":
+                    continue
                 self.store.enqueue(
-                    f"saved:{self.scope()}:{snapshot['id']}",
+                    key,
                     "announcement",
                     {**snapshot, "connection": self.connection.id},
                     scope=self.scope(),
