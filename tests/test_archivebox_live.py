@@ -70,6 +70,31 @@ async def test_real_subdomain_screenshot_download(archivebox):
     assert "cookie" not in response.request.headers and "authorization" not in response.request.headers
 
 
+async def test_real_private_subdomain_screenshot_download(archivebox):
+    """Private replay uses its scoped grant without leaking admin credentials."""
+    snapshot_id = os.environ["ARCHIVEBOX_TEST_PRIVATE_SNAPSHOT_ID"]
+    snapshot = await archivebox._request(
+        "GET", f"/api/v1/core/snapshot/{snapshot_id}", params={"with_archiveresults": "true"}
+    )
+    requests = []
+
+    async def record_request(request):
+        requests.append(request)
+
+    archivebox._replay.event_hooks["request"].append(record_request)
+    artifact = await archivebox.artifact(snapshot, "screenshot")
+    assert artifact is not None and artifact.data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert requests
+    assert all("authorization" not in request.headers for request in requests)
+    assert all(archivebox._cookie not in request.headers.get("cookie", "") for request in requests)
+    async with httpx.AsyncClient(follow_redirects=False) as anonymous:
+        response = await anonymous.get(artifact.url)
+    assert response.status_code == 302
+    assert "/admin/core/snapshot/replay-auth/" in response.headers["location"]
+    replay = await archivebox._replay.get(artifact.url)
+    assert replay.status_code == 200 and replay.content == artifact.data
+
+
 async def test_real_server_base_url_discovers_api_host():
     url = os.environ.get("ARCHIVEBOX_TEST_BASE_URL", os.environ["ARCHIVEBOX_TEST_URL"])
     token_file = os.environ.get("ARCHIVEBOX_TEST_BASE_TOKEN_FILE", os.environ["ARCHIVEBOX_TEST_TOKEN_FILE"])

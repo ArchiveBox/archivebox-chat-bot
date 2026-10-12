@@ -7,7 +7,7 @@ from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import NamedTuple
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import parse_qs, quote, urljoin, urlsplit
 
 import httpx
 
@@ -303,6 +303,43 @@ class ArchiveBox:
                 public_url = target.geturl()
                 self._replay.cookies.clear()
                 response = await stack.enter_async_context(self._replay.stream("GET", public_url))
+                if response.is_redirect:
+                    auth = urlsplit(urljoin(public_url, response.headers.get("location", "")))
+                    params = parse_qs(auth.query)
+                    if (
+                        (auth.scheme, auth.netloc) != (origin.scheme, origin.netloc)
+                        or auth.path != "/admin/core/snapshot/replay-auth/"
+                        or auth.fragment
+                        or set(params) != {"snapshot", "next"}
+                        or [value.replace("-", "") for value in params["snapshot"]]
+                        != [str(snapshot["id"]).replace("-", "")]
+                        or params["next"] != ["/" + path]
+                    ):
+                        raise RuntimeError("ArchiveBox returned an unexpected replay authorization redirect")
+                    authorized = await self._browser.get(auth.geturl(), headers=headers)
+                    grant = urlsplit(urljoin(auth.geturl(), authorized.headers.get("location", "")))
+                    grant_params = parse_qs(grant.query)
+                    if (
+                        not authorized.is_redirect
+                        or (grant.scheme, grant.netloc) != (target.scheme, target.netloc)
+                        or grant.path != "/_auth"
+                        or grant.fragment
+                        or set(grant_params) != {"grant", "next"}
+                        or len(grant_params["grant"]) != 1
+                        or grant_params["next"] != ["/" + path]
+                    ):
+                        raise RuntimeError("ArchiveBox returned an unexpected replay grant")
+                    # The server mints a snapshot-only cookie. Admin credentials
+                    # stay on the validated admin origin throughout the handoff.
+                    granted = await self._replay.get(grant.geturl())
+                    if (
+                        not granted.is_redirect
+                        or urljoin(grant.geturl(), granted.headers.get("location", "")) != public_url
+                    ):
+                        raise RuntimeError("ArchiveBox returned an unexpected authorized artifact redirect")
+                    response = await stack.enter_async_context(
+                        self._replay.stream("GET", public_url, cookies=granted.cookies)
+                    )
             if response.status_code == 404:
                 return None
             if not response.is_success:
