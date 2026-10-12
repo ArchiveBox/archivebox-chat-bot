@@ -1,0 +1,23 @@
+tests/test_zulip_live.py
+  s_10bc94d001be49::t_53bddbc959bc39 204,261
+  s_10bc94d001be49::t_bc8ceb9d5cfb21 21,237-260,262-281
+  s_10bc94d001be49::t_ce0316ed06f846 282-283
+archivebox_chat_bot/zulip.py
+  s_10bc94d001be49::t_18a2a2b1101720 9,13,366-371,375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "206fa3279c99b220a353971903fad222a6619901",
+  "prompts": {},
+  "sessions": {
+    "s_10bc94d001be49": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11f62-2c55-7051-a677-585a21b42fb4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Nick Sweeting <git@sweeting.me>"
+    }
+  }
+}
