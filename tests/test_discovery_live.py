@@ -118,6 +118,31 @@ async def test_discovery_hydrates_only_new_scoped_announcements(tmp_path):
         assert recovered["payload"]["status"] == "sealed"
         assert recovered["payload"]["persona"] == snapshot["persona"]
         assert recovered["payload"]["archiveresults"] == snapshot["archiveresults"]
+
+        # Canceling an untouched queue entry is not a saved capture. Discovery
+        # must exclude it without fetching its empty manifest for every provider.
+        untouched = await archive._request(
+            "POST",
+            "/api/v1/core/snapshots",
+            json={"url": f"https://archivebox.io/tests/cancelled-{uuid4().hex}"},
+        )
+        untouched_id = untouched["id"]
+        try:
+            cancelled = await archive._request(
+                "PATCH", f"/api/v1/core/snapshot/{untouched_id}", json={"action": "cancel"}
+            )
+            assert cancelled["status"] == "sealed"
+            assert cancelled["downloaded_at"] is None
+            assert cancelled["num_archiveresults"] == 0
+            assert cancelled["archiveresults"] == []
+            store.set_meta("sealed_cursor:" + engine.scope(), cancelled["modified_at"])
+            traffic.clear()
+            await engine.discover()
+            assert not store.has_job(f"saved:{engine.scope()}:{untouched_id}")
+            assert all(url.path != f"/api/v1/core/snapshot/{untouched_id}" for url, _, _ in traffic)
+            assert store.get(key)["state"] == "queued"
+        finally:
+            await archive._request("DELETE", f"/api/v1/core/snapshot/{untouched_id}")
     finally:
         for bot in bots:
             await bot.close()

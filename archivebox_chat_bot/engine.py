@@ -611,6 +611,15 @@ class Engine:
                 offset=offset,
             )
             for snapshot in page["items"]:
+                # Cancellation seals untouched queued rows too. They have no
+                # capture to announce, and fetching their empty manifest for
+                # each destination only amplifies a bulk cancellation.
+                if (
+                    snapshot.get("downloaded_at") is None
+                    and snapshot.get("num_archiveresults") == 0
+                    and snapshot.get("output_size") == 0
+                ):
+                    continue
                 key = f"saved:{self.scope()}:{snapshot['id']}"
                 # Overlap polls revisit already queued/delivered captures. Fetch
                 # their potentially large manifests only for a new scoped job.
